@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.KcVerificationCodeEntity = exports.KcRefreshTokenEntity = exports.KcUserEntity = exports.UpdateUserDto = exports.CreateUserDto = exports.ResetPasswordDto = exports.ForgotPasswordDto = exports.ChangePasswordDto = exports.RegisterDto = exports.LoginDto = exports.KC_EMAIL_SERVICE = exports.KC_AUTH_ADAPTER = exports.KC_AUTH_CONFIG = exports.Public = exports.Permissions = exports.Roles = exports.KcRolesGuard = exports.KcJwtAuthGuard = exports.KcTokenService = exports.KcPasswordService = exports.KcUsersService = exports.KcAuthService = exports.KcAuthModule = void 0;
+exports.KcVerificationCodeEntity = exports.KcRefreshTokenEntity = exports.KcUserEntity = exports.UpdateUserDto = exports.CreateUserDto = exports.ResetPasswordDto = exports.ForgotPasswordDto = exports.ChangePasswordDto = exports.RegisterDto = exports.LoginDto = exports.KC_TENANT_SCOPE = exports.KC_EMAIL_SERVICE = exports.KC_AUTH_ADAPTER = exports.KC_AUTH_CONFIG = exports.Public = exports.Permissions = exports.Roles = exports.KcRolesGuard = exports.KcJwtAuthGuard = exports.KcTokenService = exports.KcPasswordService = exports.KcUsersService = exports.KcAuthService = exports.KcAuthModule = void 0;
 // Module
 var auth_module_1 = require("./auth.module");
 Object.defineProperty(exports, "KcAuthModule", { enumerable: true, get: function () { return auth_module_1.KcAuthModule; } });
@@ -30,6 +30,7 @@ var auth_config_1 = require("./config/auth.config");
 Object.defineProperty(exports, "KC_AUTH_CONFIG", { enumerable: true, get: function () { return auth_config_1.KC_AUTH_CONFIG; } });
 Object.defineProperty(exports, "KC_AUTH_ADAPTER", { enumerable: true, get: function () { return auth_config_1.KC_AUTH_ADAPTER; } });
 Object.defineProperty(exports, "KC_EMAIL_SERVICE", { enumerable: true, get: function () { return auth_config_1.KC_EMAIL_SERVICE; } });
+Object.defineProperty(exports, "KC_TENANT_SCOPE", { enumerable: true, get: function () { return auth_config_1.KC_TENANT_SCOPE; } });
 // DTOs
 var login_dto_1 = require("./dto/login.dto");
 Object.defineProperty(exports, "LoginDto", { enumerable: true, get: function () { return login_dto_1.LoginDto; } });

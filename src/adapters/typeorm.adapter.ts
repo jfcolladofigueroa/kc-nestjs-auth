@@ -1,8 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional, Inject } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, LessThan } from 'typeorm';
 import { AuthDatabaseAdapter } from './adapter.interface';
-import { KcAuthUser, KcRefreshToken, KcVerificationCode } from '../config/auth.config';
+import { KcAuthUser, KcRefreshToken, KcVerificationCode, KC_TENANT_SCOPE, KcTenantScope } from '../config/auth.config';
 import { KcUserEntity, KcRefreshTokenEntity, KcVerificationCodeEntity } from './typeorm.entities';
 
 @Injectable()
@@ -11,9 +11,17 @@ export class TypeOrmAuthAdapter implements AuthDatabaseAdapter {
     @InjectRepository(KcUserEntity) private readonly userRepo: Repository<KcUserEntity>,
     @InjectRepository(KcRefreshTokenEntity) private readonly tokenRepo: Repository<KcRefreshTokenEntity>,
     @InjectRepository(KcVerificationCodeEntity) private readonly codeRepo: Repository<KcVerificationCodeEntity>,
+    @Optional() @Inject(KC_TENANT_SCOPE) private readonly tenantScope?: KcTenantScope,
   ) {}
 
+  /** Tenant a aplicar (null = sem scoping: single-tenant ou superadmin). */
+  private get scopedTenantId(): number | null {
+    if (!this.tenantScope || this.tenantScope.isSuperadmin()) return null;
+    return this.tenantScope.getTenantId();
+  }
+
   async findUserByEmail(email: string): Promise<KcAuthUser | null> {
+    // NÃO escopado: o login precisa achar o usuário por email sem contexto de tenant.
     return this.userRepo.findOne({ where: { email } }) as any;
   }
 
@@ -22,11 +30,14 @@ export class TypeOrmAuthAdapter implements AuthDatabaseAdapter {
   }
 
   async findAllUsers(): Promise<KcAuthUser[]> {
-    return this.userRepo.find({ order: { createdAt: 'DESC' } }) as any;
+    const tid = this.scopedTenantId;
+    const where = tid != null ? { tenantId: tid } : {};
+    return this.userRepo.find({ where, order: { createdAt: 'DESC' } }) as any;
   }
 
-  async createUser(data: { email: string; passwordHash: string; name: string; role: string }): Promise<KcAuthUser> {
-    const user = this.userRepo.create(data);
+  async createUser(data: { email: string; passwordHash: string; name: string; role: string; tenantId?: number | null }): Promise<KcAuthUser> {
+    const tenantId = data.tenantId ?? this.scopedTenantId;
+    const user = this.userRepo.create({ ...data, tenantId });
     return this.userRepo.save(user) as any;
   }
 

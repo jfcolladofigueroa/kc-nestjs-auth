@@ -1,6 +1,16 @@
 export declare const KC_AUTH_CONFIG = "KC_AUTH_CONFIG";
 export declare const KC_AUTH_ADAPTER = "KC_AUTH_ADAPTER";
 export declare const KC_EMAIL_SERVICE = "KC_EMAIL_SERVICE";
+export declare const KC_TENANT_SCOPE = "KC_TENANT_SCOPE";
+/**
+ * Resolver opcional de multi-tenancy. Se a app o prover (token KC_TENANT_SCOPE),
+ * findAllUsers/createUser passam a respeitar o tenant em curso. Sem ele, o
+ * comportamento é single-tenant (sem scoping) — retrocompatível.
+ */
+export interface KcTenantScope {
+    getTenantId(): number | null;
+    isSuperadmin(): boolean;
+}
 export interface KcAuthConfig {
     adapter: 'typeorm' | 'mongoose';
     jwtSecret: string;

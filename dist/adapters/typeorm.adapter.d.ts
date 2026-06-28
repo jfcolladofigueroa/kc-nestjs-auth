@@ -1,12 +1,15 @@
 import { Repository } from 'typeorm';
 import { AuthDatabaseAdapter } from './adapter.interface';
-import { KcAuthUser, KcRefreshToken, KcVerificationCode } from '../config/auth.config';
+import { KcAuthUser, KcRefreshToken, KcVerificationCode, KcTenantScope } from '../config/auth.config';
 import { KcUserEntity, KcRefreshTokenEntity, KcVerificationCodeEntity } from './typeorm.entities';
 export declare class TypeOrmAuthAdapter implements AuthDatabaseAdapter {
     private readonly userRepo;
     private readonly tokenRepo;
     private readonly codeRepo;
-    constructor(userRepo: Repository<KcUserEntity>, tokenRepo: Repository<KcRefreshTokenEntity>, codeRepo: Repository<KcVerificationCodeEntity>);
+    private readonly tenantScope?;
+    constructor(userRepo: Repository<KcUserEntity>, tokenRepo: Repository<KcRefreshTokenEntity>, codeRepo: Repository<KcVerificationCodeEntity>, tenantScope?: KcTenantScope | undefined);
+    /** Tenant a aplicar (null = sem scoping: single-tenant ou superadmin). */
+    private get scopedTenantId();
     findUserByEmail(email: string): Promise<KcAuthUser | null>;
     findUserById(id: number | string): Promise<KcAuthUser | null>;
     findAllUsers(): Promise<KcAuthUser[]>;
@@ -15,6 +18,7 @@ export declare class TypeOrmAuthAdapter implements AuthDatabaseAdapter {
         passwordHash: string;
         name: string;
         role: string;
+        tenantId?: number | null;
     }): Promise<KcAuthUser>;
     updateUser(id: number | string, data: Partial<any>): Promise<KcAuthUser>;
     deleteUser(id: number | string): Promise<void>;

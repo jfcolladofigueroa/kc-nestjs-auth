@@ -8,7 +8,7 @@ export { KcRolesGuard } from './roles/roles.guard';
 export { Roles } from './roles/roles.decorator';
 export { Permissions } from './roles/permissions.decorator';
 export { Public } from './guards/public.decorator';
-export { KcAuthConfig, KcEmailService, KcAuthUser, KC_AUTH_CONFIG, KC_AUTH_ADAPTER, KC_EMAIL_SERVICE } from './config/auth.config';
+export { KcAuthConfig, KcEmailService, KcAuthUser, KcTenantScope, KC_AUTH_CONFIG, KC_AUTH_ADAPTER, KC_EMAIL_SERVICE, KC_TENANT_SCOPE } from './config/auth.config';
 export { AuthDatabaseAdapter } from './adapters/adapter.interface';
 export { LoginDto } from './dto/login.dto';
 export { RegisterDto } from './dto/register.dto';

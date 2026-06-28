@@ -16,24 +16,36 @@ exports.TypeOrmAuthAdapter = void 0;
 const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
+const auth_config_1 = require("../config/auth.config");
 const typeorm_entities_1 = require("./typeorm.entities");
 let TypeOrmAuthAdapter = class TypeOrmAuthAdapter {
-    constructor(userRepo, tokenRepo, codeRepo) {
+    constructor(userRepo, tokenRepo, codeRepo, tenantScope) {
         this.userRepo = userRepo;
         this.tokenRepo = tokenRepo;
         this.codeRepo = codeRepo;
+        this.tenantScope = tenantScope;
+    }
+    /** Tenant a aplicar (null = sem scoping: single-tenant ou superadmin). */
+    get scopedTenantId() {
+        if (!this.tenantScope || this.tenantScope.isSuperadmin())
+            return null;
+        return this.tenantScope.getTenantId();
     }
     async findUserByEmail(email) {
+        // NÃO escopado: o login precisa achar o usuário por email sem contexto de tenant.
         return this.userRepo.findOne({ where: { email } });
     }
     async findUserById(id) {
         return this.userRepo.findOne({ where: { id: Number(id) } });
     }
     async findAllUsers() {
-        return this.userRepo.find({ order: { createdAt: 'DESC' } });
+        const tid = this.scopedTenantId;
+        const where = tid != null ? { tenantId: tid } : {};
+        return this.userRepo.find({ where, order: { createdAt: 'DESC' } });
     }
     async createUser(data) {
-        const user = this.userRepo.create(data);
+        const tenantId = data.tenantId ?? this.scopedTenantId;
+        const user = this.userRepo.create({ ...data, tenantId });
         return this.userRepo.save(user);
     }
     async updateUser(id, data) {
@@ -97,7 +109,9 @@ exports.TypeOrmAuthAdapter = TypeOrmAuthAdapter = __decorate([
     __param(0, (0, typeorm_1.InjectRepository)(typeorm_entities_1.KcUserEntity)),
     __param(1, (0, typeorm_1.InjectRepository)(typeorm_entities_1.KcRefreshTokenEntity)),
     __param(2, (0, typeorm_1.InjectRepository)(typeorm_entities_1.KcVerificationCodeEntity)),
+    __param(3, (0, common_1.Optional)()),
+    __param(3, (0, common_1.Inject)(auth_config_1.KC_TENANT_SCOPE)),
     __metadata("design:paramtypes", [typeorm_2.Repository,
         typeorm_2.Repository,
-        typeorm_2.Repository])
+        typeorm_2.Repository, Object])
 ], TypeOrmAuthAdapter);
