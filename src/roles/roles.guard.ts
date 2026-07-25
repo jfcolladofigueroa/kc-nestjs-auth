@@ -15,19 +15,19 @@ export class KcRolesGuard implements CanActivate {
       context.getHandler(), context.getClass(),
     ]);
 
-    // No roles ni permissions requeridos = acceso libre (solo auth)
+    // No roles or permissions required = open access (auth only)
     if (!requiredRoles?.length && !requiredPermissions?.length) return true;
 
     const { user } = context.switchToHttp().getRequest();
-    if (!user) throw new ForbiddenException('Acesso negado');
+    if (!user) throw new ForbiddenException('Access denied');
 
-    // Admin tiene acceso a todo
+    // Admin has access to everything
     if (user.role === 'admin') return true;
 
     // Check roles
     if (requiredRoles?.length) {
       if (!requiredRoles.includes(user.role)) {
-        throw new ForbiddenException('Acesso negado: perfil insuficiente');
+        throw new ForbiddenException('Access denied: insufficient role');
       }
     }
 
@@ -36,7 +36,7 @@ export class KcRolesGuard implements CanActivate {
       const userPerms: string[] = user.permissions || [];
       const hasAllPerms = requiredPermissions.every((p: string) => userPerms.includes(p));
       if (!hasAllPerms) {
-        throw new ForbiddenException('Acesso negado: permissão insuficiente');
+        throw new ForbiddenException('Access denied: insufficient permissions');
       }
     }
 

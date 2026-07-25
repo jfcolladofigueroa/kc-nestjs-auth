@@ -17,7 +17,7 @@ export class KcPasswordService {
   validate(password: string): { valid: boolean; message?: string } {
     const minLength = this.config.passwordMinLength || 6;
     if (password.length < minLength) {
-      return { valid: false, message: `A senha deve ter no mínimo ${minLength} caracteres` };
+      return { valid: false, message: `Password must be at least ${minLength} characters long` };
     }
     return { valid: true };
   }

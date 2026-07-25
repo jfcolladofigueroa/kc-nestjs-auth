@@ -1,6 +1,7 @@
 import { Controller, Post, Get, Body, Req, UseGuards, Inject } from '@nestjs/common';
 import { KcAuthService } from './auth.service';
 import { KcJwtAuthGuard } from './guards/jwt-auth.guard';
+import { KcRateLimitGuard } from './security/rate-limit.guard';
 import { Public } from './guards/public.decorator';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
@@ -18,6 +19,7 @@ export class KcAuthController {
   ) {}
 
   @Public()
+  @UseGuards(KcRateLimitGuard)
   @Post('login')
   login(@Body() dto: LoginDto) {
     return this.authService.login(dto.email, dto.password);
@@ -51,12 +53,14 @@ export class KcAuthController {
   }
 
   @Public()
+  @UseGuards(KcRateLimitGuard)
   @Post('forgot-password')
   forgotPassword(@Body() dto: ForgotPasswordDto) {
     return this.authService.forgotPassword(dto.email);
   }
 
   @Public()
+  @UseGuards(KcRateLimitGuard)
   @Post('reset-password')
   resetPassword(@Body() dto: ResetPasswordDto) {
     return this.authService.resetPassword(dto.email, dto.code, dto.newPassword);

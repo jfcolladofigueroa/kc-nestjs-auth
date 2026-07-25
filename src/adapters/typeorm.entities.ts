@@ -1,6 +1,8 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 
-@Entity('users')
+// Prefixed like the other library tables to avoid colliding with a host app's
+// own `users` table. Migrating from <= 0.1.0: ALTER TABLE users RENAME TO auth_users;
+@Entity('auth_users')
 export class KcUserEntity {
   @PrimaryGeneratedColumn()
   id!: number;
@@ -17,7 +19,7 @@ export class KcUserEntity {
   @Column({ default: 'user' })
   role!: string;
 
-  // Multi-tenancy opcional: nullable para não quebrar projetos single-tenant.
+  // Optional multi-tenancy: nullable so single-tenant projects keep working.
   @Column({ name: 'tenant_id', type: 'int', nullable: true })
   tenantId?: number | null;
 
@@ -27,7 +29,9 @@ export class KcUserEntity {
   @Column({ name: 'is_active', default: true })
   isActive!: boolean;
 
-  @Column({ name: 'last_login_at', nullable: true, type: 'timestamp' })
+  // No explicit column type: TypeORM picks the driver-appropriate date type
+  // (timestamp on Postgres, datetime on MySQL/SQLite).
+  @Column({ name: 'last_login_at', nullable: true })
   lastLoginAt!: Date;
 
   @CreateDateColumn({ name: 'created_at' })
@@ -48,7 +52,7 @@ export class KcRefreshTokenEntity {
   @Column({ unique: true })
   token!: string;
 
-  @Column({ name: 'expires_at', type: 'timestamp' })
+  @Column({ name: 'expires_at' })
   expiresAt!: Date;
 
   @Column({ default: false })
@@ -72,11 +76,14 @@ export class KcVerificationCodeEntity {
   @Column()
   type!: string;
 
-  @Column({ name: 'expires_at', type: 'timestamp' })
+  @Column({ name: 'expires_at' })
   expiresAt!: Date;
 
   @Column({ default: false })
   used!: boolean;
+
+  @Column({ default: 0 })
+  attempts!: number;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt!: Date;

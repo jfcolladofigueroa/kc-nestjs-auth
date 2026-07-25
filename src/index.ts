@@ -10,6 +10,7 @@ export { KcTokenService } from './tokens/jwt.service';
 // Guards
 export { KcJwtAuthGuard } from './guards/jwt-auth.guard';
 export { KcRolesGuard } from './roles/roles.guard';
+export { KcRateLimitGuard } from './security/rate-limit.guard';
 
 // Decorators
 export { Roles } from './roles/roles.decorator';
@@ -19,6 +20,9 @@ export { Public } from './guards/public.decorator';
 // Config & Interfaces
 export { KcAuthConfig, KcEmailService, KcAuthUser, KcTenantScope, KC_AUTH_CONFIG, KC_AUTH_ADAPTER, KC_EMAIL_SERVICE, KC_TENANT_SCOPE } from './config/auth.config';
 export { AuthDatabaseAdapter } from './adapters/adapter.interface';
+
+// Events
+export { KC_USER_DELETED_EVENT, KcUserDeletedEvent } from './events/auth.events';
 
 // DTOs
 export { LoginDto } from './dto/login.dto';

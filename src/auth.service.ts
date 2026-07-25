@@ -1,8 +1,11 @@
-import { Injectable, Inject, UnauthorizedException, ConflictException, BadRequestException } from '@nestjs/common';
+import { Injectable, Inject, UnauthorizedException, ConflictException, BadRequestException, NotFoundException } from '@nestjs/common';
 import { KC_AUTH_CONFIG, KC_AUTH_ADAPTER, KC_EMAIL_SERVICE, KcAuthConfig, KcEmailService } from './config/auth.config';
 import { AuthDatabaseAdapter } from './adapters/adapter.interface';
-import { KcTokenService, parsePermissions } from './tokens/jwt.service';
+import { KcTokenService } from './tokens/jwt.service';
 import { KcPasswordService } from './password/password.service';
+import { parsePermissions } from './utils/permissions.util';
+import { parseDuration } from './utils/duration.util';
+import { safeEqual } from './utils/safe-equal.util';
 
 @Injectable()
 export class KcAuthService {
@@ -16,11 +19,11 @@ export class KcAuthService {
 
   async login(email: string, password: string) {
     const user = await this.adapter.findUserByEmail(email.toLowerCase().trim());
-    if (!user) throw new UnauthorizedException('Credenciais inválidas');
-    if (!user.isActive) throw new UnauthorizedException('Usuário inativo');
+    if (!user) throw new UnauthorizedException('Invalid credentials');
+    if (!user.isActive) throw new UnauthorizedException('User is inactive');
 
     const valid = await this.passwordService.verify(password, user.passwordHash);
-    if (!valid) throw new UnauthorizedException('Credenciais inválidas');
+    if (!valid) throw new UnauthorizedException('Invalid credentials');
 
     await this.adapter.updateUser(user.id, { lastLoginAt: new Date() });
 
@@ -37,9 +40,9 @@ export class KcAuthService {
   }
 
   async register(email: string, password: string, name: string) {
-    if (!this.config.enableRegistration) throw new BadRequestException('Registro não habilitado');
+    if (!this.config.enableRegistration) throw new BadRequestException('Registration is not enabled');
     const existing = await this.adapter.findUserByEmail(email.toLowerCase().trim());
-    if (existing) throw new ConflictException('Email já cadastrado');
+    if (existing) throw new ConflictException('Email already registered');
     const validation = this.passwordService.validate(password);
     if (!validation.valid) throw new BadRequestException(validation.message);
     const passwordHash = await this.passwordService.hash(password);
@@ -52,7 +55,7 @@ export class KcAuthService {
 
   async refresh(refreshToken: string) {
     const result = await this.tokenService.refreshAccessToken(refreshToken);
-    if (!result) throw new UnauthorizedException('Token inválido ou expirado');
+    if (!result) throw new UnauthorizedException('Invalid or expired token');
     return result;
   }
 
@@ -62,7 +65,7 @@ export class KcAuthService {
 
   async getMe(userId: number | string) {
     const user = await this.adapter.findUserById(userId);
-    if (!user) throw new UnauthorizedException('Usuário não encontrado');
+    if (!user) throw new UnauthorizedException('User not found');
     return { id: user.id, email: user.email, name: user.name, role: user.role, tenantId: user.tenantId ?? null, permissions: parsePermissions(user) };
   }
 
@@ -70,7 +73,7 @@ export class KcAuthService {
     const user = await this.adapter.findUserById(userId);
     if (!user) throw new UnauthorizedException();
     const valid = await this.passwordService.verify(currentPassword, user.passwordHash);
-    if (!valid) throw new BadRequestException('Senha atual incorreta');
+    if (!valid) throw new BadRequestException('Current password is incorrect');
     const validation = this.passwordService.validate(newPassword);
     if (!validation.valid) throw new BadRequestException(validation.message);
     const passwordHash = await this.passwordService.hash(newPassword);
@@ -79,19 +82,30 @@ export class KcAuthService {
   }
 
   async forgotPassword(email: string) {
+    if (!this.config.enablePasswordRecovery) throw new NotFoundException();
     const user = await this.adapter.findUserByEmail(email.toLowerCase().trim());
     if (!user) return;
     const code = this.passwordService.generateCode(this.config.verificationCodeLength || 6);
-    const expMinutes = parseInt(this.config.verificationCodeExpiration || '60') || 60;
-    const expiresAt = new Date();
-    expiresAt.setMinutes(expiresAt.getMinutes() + expMinutes);
+    const ttlMs = parseDuration(this.config.verificationCodeExpiration || '1h', 'verificationCodeExpiration');
+    const expiresAt = new Date(Date.now() + ttlMs);
     await this.adapter.createVerificationCode({ userId: user.id, code, type: 'password_recovery', expiresAt });
     if (this.emailService) await this.emailService.sendPasswordRecoveryEmail(user.email, code, user.name);
   }
 
   async resetPassword(email: string, code: string, newPassword: string) {
-    const result = await this.adapter.findVerificationCode(email.toLowerCase().trim(), code, 'password_recovery');
-    if (!result || result.code.used || result.code.expiresAt < new Date()) throw new BadRequestException('Código inválido ou expirado');
+    if (!this.config.enablePasswordRecovery) throw new NotFoundException();
+    const result = await this.adapter.findLatestActiveCode(email.toLowerCase().trim(), 'password_recovery');
+    if (!result || result.code.used || result.code.expiresAt < new Date()) {
+      throw new BadRequestException('Invalid or expired code');
+    }
+
+    if (!safeEqual(result.code.code, code)) {
+      const attempts = await this.adapter.incrementCodeAttempts(result.code.id);
+      const maxAttempts = this.config.verificationCodeMaxAttempts || 5;
+      if (attempts >= maxAttempts) await this.adapter.markCodeUsed(result.code.id);
+      throw new BadRequestException('Invalid or expired code');
+    }
+
     const validation = this.passwordService.validate(newPassword);
     if (!validation.valid) throw new BadRequestException(validation.message);
     const passwordHash = await this.passwordService.hash(newPassword);

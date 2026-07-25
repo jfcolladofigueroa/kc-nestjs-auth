@@ -6,7 +6,8 @@ export interface AuthDatabaseAdapter {
   findUserById(id: number | string): Promise<KcAuthUser | null>;
   findAllUsers(): Promise<KcAuthUser[]>;
   createUser(data: { email: string; passwordHash: string; name: string; role: string; tenantId?: number | null }): Promise<KcAuthUser>;
-  updateUser(id: number | string, data: Partial<Pick<KcAuthUser, 'email' | 'name' | 'role' | 'passwordHash' | 'isActive' | 'lastLoginAt' | 'tenantId'>>): Promise<KcAuthUser>;
+  /** Returns the updated user, or null when no row matched (e.g. tenant-scoped miss). */
+  updateUser(id: number | string, data: Partial<Pick<KcAuthUser, 'email' | 'name' | 'role' | 'passwordHash' | 'isActive' | 'lastLoginAt' | 'tenantId'>>): Promise<KcAuthUser | null>;
   deleteUser(id: number | string): Promise<void>;
 
   // Refresh Tokens
@@ -18,7 +19,10 @@ export interface AuthDatabaseAdapter {
 
   // Verification Codes
   createVerificationCode(data: { userId: number | string; code: string; type: string; expiresAt: Date }): Promise<KcVerificationCode>;
-  findVerificationCode(email: string, code: string, type: string): Promise<{ code: KcVerificationCode; user: KcAuthUser } | null>;
+  /** Latest unused code of the given type for the user, regardless of its value. */
+  findLatestActiveCode(email: string, type: string): Promise<{ code: KcVerificationCode; user: KcAuthUser } | null>;
+  /** Registers a failed match attempt and returns the updated attempt count. */
+  incrementCodeAttempts(id: number | string): Promise<number>;
   markCodeUsed(id: number | string): Promise<void>;
 
   // Init (create tables/collections if needed)

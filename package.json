@@ -1,47 +1,56 @@
 {
   "name": "@kc-software/nestjs-auth",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Reusable NestJS authentication module with JWT, RBAC, password recovery, and multi-DB support",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "tsc",
-    "prepublishOnly": "npm run build"
+    "build": "rm -rf dist && tsc",
+    "prepublishOnly": "npm run build",
+    "test": "jest",
+    "test:watch": "jest --watch"
   },
   "peerDependencies": {
     "@nestjs/common": "^10.0.0 || ^11.0.0",
     "@nestjs/core": "^10.0.0 || ^11.0.0",
+    "@nestjs/event-emitter": "^2.0.0 || ^3.0.0",
     "@nestjs/jwt": "^10.0.0 || ^11.0.0",
     "@nestjs/passport": "^10.0.0 || ^11.0.0",
+    "@nestjs/typeorm": "^10.0.0 || ^11.0.0",
+    "bcrypt": "^5.0.0",
+    "class-transformer": "^0.5.0",
+    "class-validator": "^0.14.0",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.0",
-    "bcrypt": "^5.0.0",
-    "class-validator": "^0.14.0",
-    "class-transformer": "^0.5.0"
-  },
-  "peerDependenciesMeta": {
-    "typeorm": { "optional": true },
-    "@nestjs/typeorm": { "optional": true },
-    "@nestjs/mongoose": { "optional": true },
-    "mongoose": { "optional": true }
+    "typeorm": "^0.3.0"
   },
   "devDependencies": {
     "@nestjs/common": "^11.0.0",
     "@nestjs/core": "^11.0.0",
+    "@nestjs/event-emitter": "^3.1.0",
     "@nestjs/jwt": "^11.0.0",
     "@nestjs/passport": "^11.0.0",
+    "@nestjs/platform-express": "^11.1.28",
+    "@nestjs/testing": "^11.1.28",
     "@nestjs/typeorm": "^11.0.0",
     "@types/bcrypt": "^5.0.0",
+    "@types/jest": "^30.0.0",
     "@types/passport-jwt": "^4.0.0",
     "bcrypt": "^5.1.1",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.0",
+    "jest": "^30.4.2",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "reflect-metadata": "^0.2.0",
+    "rxjs": "^7.8.2",
+    "sql.js": "^1.14.1",
+    "ts-jest": "^29.4.11",
     "typeorm": "^0.3.0",
     "typescript": "^5.5.0"
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "license": "MIT"
 }
