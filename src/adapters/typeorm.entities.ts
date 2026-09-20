@@ -1,5 +1,34 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, Index, Unique } from 'typeorm';
 
+/**
+ * Column type for every date column of the library, read once at import time.
+ *
+ * Unset, TypeORM picks the driver default (`timestamp` on PostgreSQL,
+ * `datetime` on MySQL/SQLite) — which is what every install got before 0.3.0.
+ *
+ * On PostgreSQL that default is a *naive* `timestamp`: a Node process running
+ * outside UTC writes its local wall clock, so a value computed in Node
+ * (`expiresAt`) stops being comparable with one produced by the database
+ * (`created_at` via `now()`, in UTC) and a recovery code can be born expired.
+ * Set `KC_AUTH_DATE_TYPE=timestamptz` to store absolute instants instead, and
+ * convert the existing columns with `ALTER TABLE ... TYPE timestamptz USING
+ * col AT TIME ZONE 'UTC'`.
+ *
+ * It is an environment variable and not a `forRoot()` option because column
+ * types are fixed when these decorators run, long before any module is
+ * configured.
+ */
+const ALLOWED_DATE_TYPES = ['timestamptz', 'timestamp with time zone', 'timestamp', 'datetime'];
+const rawDateType = process.env.KC_AUTH_DATE_TYPE?.trim();
+if (rawDateType && !ALLOWED_DATE_TYPES.includes(rawDateType)) {
+  throw new Error(
+    `[kc-auth] KC_AUTH_DATE_TYPE="${rawDateType}" is not supported. Use one of: ${ALLOWED_DATE_TYPES.join(', ')}.`,
+  );
+}
+// `undefined` leaves the decision to TypeORM's driver defaults.
+const DATE_TYPE = (rawDateType || undefined) as any;
+
+
 // Prefixed like the other library tables to avoid colliding with a host app's
 // own `users` table. Migrating from <= 0.1.0: ALTER TABLE users RENAME TO auth_users;
 @Entity('auth_users')
@@ -34,15 +63,13 @@ export class KcUserEntity {
   @Column({ name: 'is_active', default: true })
   isActive!: boolean;
 
-  // No explicit column type: TypeORM picks the driver-appropriate date type
-  // (timestamp on Postgres, datetime on MySQL/SQLite).
-  @Column({ name: 'last_login_at', nullable: true })
+  @Column({ name: 'last_login_at', type: DATE_TYPE, nullable: true })
   lastLoginAt!: Date;
 
-  @CreateDateColumn({ name: 'created_at' })
+  @CreateDateColumn({ name: 'created_at', type: DATE_TYPE })
   createdAt!: Date;
 
-  @UpdateDateColumn({ name: 'updated_at' })
+  @UpdateDateColumn({ name: 'updated_at', type: DATE_TYPE })
   updatedAt!: Date;
 }
 
@@ -57,13 +84,13 @@ export class KcRefreshTokenEntity {
   @Column({ unique: true })
   token!: string;
 
-  @Column({ name: 'expires_at' })
+  @Column({ name: 'expires_at', type: DATE_TYPE })
   expiresAt!: Date;
 
   @Column({ default: false })
   revoked!: boolean;
 
-  @CreateDateColumn({ name: 'created_at' })
+  @CreateDateColumn({ name: 'created_at', type: DATE_TYPE })
   createdAt!: Date;
 }
 
@@ -81,7 +108,7 @@ export class KcVerificationCodeEntity {
   @Column()
   type!: string;
 
-  @Column({ name: 'expires_at' })
+  @Column({ name: 'expires_at', type: DATE_TYPE })
   expiresAt!: Date;
 
   @Column({ default: false })
@@ -90,7 +117,7 @@ export class KcVerificationCodeEntity {
   @Column({ default: 0 })
   attempts!: number;
 
-  @CreateDateColumn({ name: 'created_at' })
+  @CreateDateColumn({ name: 'created_at', type: DATE_TYPE })
   createdAt!: Date;
 }
 
@@ -116,10 +143,10 @@ export class KcProfileEntity {
   @Column({ name: 'is_active', default: true })
   isActive!: boolean;
 
-  @CreateDateColumn({ name: 'created_at' })
+  @CreateDateColumn({ name: 'created_at', type: DATE_TYPE })
   createdAt!: Date;
 
-  @UpdateDateColumn({ name: 'updated_at' })
+  @UpdateDateColumn({ name: 'updated_at', type: DATE_TYPE })
   updatedAt!: Date;
 }
 

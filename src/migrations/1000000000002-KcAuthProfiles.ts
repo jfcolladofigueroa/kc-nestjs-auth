@@ -1,4 +1,5 @@
 import { MigrationInterface, QueryRunner, Table, TableColumn, TableIndex } from 'typeorm';
+import { dateColumnType } from './date-type.util';
 
 /**
  * Adds profiles and the permission matrix (0.3.0). Strictly additive: creates
@@ -13,7 +14,7 @@ export class KcAuthProfiles1000000000002 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     const isPg = queryRunner.connection.options.type === 'postgres';
     const pk = isPg ? 'SERIAL' : 'integer';
-    const ts = isPg ? 'TIMESTAMP' : 'datetime';
+    const ts = dateColumnType(queryRunner);
 
     if (!(await queryRunner.hasTable('auth_profiles'))) {
       await queryRunner.createTable(

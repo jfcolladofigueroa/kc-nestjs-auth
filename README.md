@@ -256,6 +256,34 @@ Every profile method on `AuthDatabaseAdapter` is optional. An adapter written
 against 0.2.0 keeps compiling and working: permissions stay flat and the
 `/profiles` endpoints answer `501 Not Implemented`.
 
+## Dates on PostgreSQL (`KC_AUTH_DATE_TYPE`)
+
+By default the date columns take TypeORM's driver type: `timestamp` on
+PostgreSQL, `datetime` on MySQL/SQLite. On PostgreSQL that is a *naive*
+`timestamp`, and it bites when the Node process does not run in UTC: `expiresAt`
+is computed in Node and written as local wall clock, while `created_at` comes
+from the database's `now()` in UTC. The two stop being comparable and a recovery
+code can be born expired.
+
+Set `KC_AUTH_DATE_TYPE=timestamptz` in the process environment to store absolute
+instants instead. It is an environment variable, not a `forRoot()` option,
+because column types are fixed when the entity decorators run — long before any
+module is configured. Allowed values: `timestamptz`,
+`timestamp with time zone`, `timestamp`, `datetime`; anything else throws at
+import.
+
+On an existing database, convert the columns as well:
+
+```sql
+ALTER TABLE auth_users
+  ALTER COLUMN created_at TYPE timestamptz USING created_at AT TIME ZONE 'UTC';
+-- ...and the same for updated_at, last_login_at, and the expires_at/created_at
+-- columns of auth_refresh_tokens and auth_verification_codes.
+```
+
+The library's migrations read the same variable, so a schema they create already
+matches.
+
 ## Migrations
 
 The library owns `auth_users`, `auth_refresh_tokens`, `auth_verification_codes`,

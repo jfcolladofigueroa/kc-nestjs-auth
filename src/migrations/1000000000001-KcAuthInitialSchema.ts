@@ -1,4 +1,5 @@
 import { MigrationInterface, QueryRunner, Table, TableIndex } from 'typeorm';
+import { dateColumnType } from './date-type.util';
 
 /**
  * Baseline schema of the library: `auth_users`, `auth_refresh_tokens` and
@@ -17,11 +18,10 @@ export class KcAuthInitialSchema1000000000001 implements MigrationInterface {
   name = 'KcAuthInitialSchema1000000000001';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    const isPg = queryRunner.connection.options.type === 'postgres';
     // Driver-appropriate types; TypeORM's Table API needs explicit ones.
+    const isPg = queryRunner.connection.options.type === 'postgres';
     const pk = isPg ? 'SERIAL' : 'integer';
-    const bool = isPg ? 'boolean' : 'boolean';
-    const ts = isPg ? 'TIMESTAMP' : 'datetime';
+    const ts = dateColumnType(queryRunner);
 
     if (!(await queryRunner.hasTable('auth_users'))) {
       await queryRunner.createTable(
@@ -35,7 +35,7 @@ export class KcAuthInitialSchema1000000000001 implements MigrationInterface {
             { name: 'role', type: 'varchar', default: "'user'" },
             { name: 'tenant_id', type: 'int', isNullable: true },
             { name: 'permissions', type: 'text', default: "'[]'" },
-            { name: 'is_active', type: bool, default: true },
+            { name: 'is_active', type: 'boolean', default: true },
             { name: 'last_login_at', type: ts, isNullable: true },
             { name: 'created_at', type: ts, default: 'CURRENT_TIMESTAMP' },
             { name: 'updated_at', type: ts, default: 'CURRENT_TIMESTAMP' },
@@ -54,7 +54,7 @@ export class KcAuthInitialSchema1000000000001 implements MigrationInterface {
             { name: 'user_id', type: 'int' },
             { name: 'token', type: 'varchar', isUnique: true },
             { name: 'expires_at', type: ts },
-            { name: 'revoked', type: bool, default: false },
+            { name: 'revoked', type: 'boolean', default: false },
             { name: 'created_at', type: ts, default: 'CURRENT_TIMESTAMP' },
           ],
         }),
@@ -76,7 +76,7 @@ export class KcAuthInitialSchema1000000000001 implements MigrationInterface {
             { name: 'code', type: 'varchar' },
             { name: 'type', type: 'varchar' },
             { name: 'expires_at', type: ts },
-            { name: 'used', type: bool, default: false },
+            { name: 'used', type: 'boolean', default: false },
             { name: 'attempts', type: 'int', default: 0 },
             { name: 'created_at', type: ts, default: 'CURRENT_TIMESTAMP' },
           ],

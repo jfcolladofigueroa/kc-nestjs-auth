@@ -36,6 +36,10 @@ decision on upgrade — see *Changed* below.
 - `permissionVerbs` to override the four verbs used to flatten a matrix.
 - `KC_USER_DEACTIVATED_EVENT`, and a `deletionMode` field on the payload of
   `KC_USER_DELETED_EVENT`.
+- `KC_AUTH_DATE_TYPE` to store the date columns as `timestamptz` on PostgreSQL
+  instead of the naive `timestamp` TypeORM picks by default. Unset, nothing
+  changes. Upstreamed from a patch `cesta_precios` was carrying on its vendored
+  copy of the build.
 - `profileId` in the JWT payload, in `req.user`, and in the `/auth/login`,
   `/auth/refresh` and `/auth/me` responses. `GET /users` and `PUT /users/:id`
   also return `effectivePermissions`.
