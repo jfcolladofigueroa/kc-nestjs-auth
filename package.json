@@ -1,7 +1,26 @@
 {
   "name": "@kc-software/nestjs-auth",
-  "version": "0.2.0",
-  "description": "Reusable NestJS authentication module with JWT, RBAC, password recovery, and multi-DB support",
+  "version": "0.3.0",
+  "description": "Reusable NestJS authentication module: JWT, RBAC with profiles and a permission matrix, password recovery, migrations and multi-DB support",
+  "keywords": [
+    "nestjs",
+    "auth",
+    "jwt",
+    "rbac",
+    "permissions",
+    "profiles",
+    "typeorm",
+    "multi-tenant"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jfcolladofigueroa/kc-nestjs-auth.git"
+  },
+  "homepage": "https://github.com/jfcolladofigueroa/kc-nestjs-auth#readme",
+  "bugs": {
+    "url": "https://github.com/jfcolladofigueroa/kc-nestjs-auth/issues"
+  },
+  "author": "COLLADO FIGUEIRA LTDA (KC Software)",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
@@ -50,7 +69,15 @@
     "typescript": "^5.5.0"
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "CHANGELOG.md"
   ],
-  "license": "MIT"
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=18"
+  }
 }

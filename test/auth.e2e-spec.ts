@@ -5,11 +5,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 
 import { KcAuthModule } from '../src/auth.module';
-import {
-  KcUserEntity,
-  KcRefreshTokenEntity,
-  KcVerificationCodeEntity,
-} from '../src/adapters/typeorm.entities';
+import { kcAuthEntities } from '../src/adapters/typeorm.entities';
 
 interface Res {
   status: number;
@@ -55,7 +51,7 @@ describe('KcAuthModule (e2e)', () => {
           type: 'sqljs',
           synchronize: true,
           autoSave: false,
-          entities: [KcUserEntity, KcRefreshTokenEntity, KcVerificationCodeEntity],
+          entities: kcAuthEntities,
         }),
         KcAuthModule.forRoot({
           adapter: 'typeorm',
@@ -297,13 +293,24 @@ describe('KcAuthModule (e2e)', () => {
       expect(r.status).toBe(400);
     });
 
-    it('deletes another user and removes it from the database', async () => {
+    // Since 0.3.0 removal is logical by default: ids are stable and never
+    // reused, so business ledgers can reference auth_users.id forever.
+    it('deactivates another user, keeping the row and the id', async () => {
       const [{ id }] = await ds.query(`SELECT id FROM auth_users WHERE email = 'worker@test.com'`);
       const r = await del(`/users/${id}`, adminToken2);
       expect(r.status).toBe(200);
 
+      const [row] = await ds.query(`SELECT id, is_active FROM auth_users WHERE id = ${id}`);
+      expect(row).toBeDefined();
+      expect(Boolean(row.is_active)).toBe(false);
+
       const [{ n }] = await ds.query(`SELECT COUNT(*) as n FROM auth_users`);
-      expect(Number(n)).toBe(1);
+      expect(Number(n)).toBe(2);
+    });
+
+    it('rejects the login of a deactivated user', async () => {
+      const r = await post('/auth/login', { email: 'worker@test.com', password: 'resetPass1' });
+      expect(r.status).toBe(401);
     });
   });
 });

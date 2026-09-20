@@ -184,3 +184,74 @@ describe('KcAuthModule.forRoot validation', () => {
     expect(() => KcAuthModule.forRoot({ adapter: 'custom', jwtSecret: 'x' })).toThrow(/adapterProvider/);
   });
 });
+
+/**
+ * An adapter written against 0.2.0 knows nothing about profiles. It must keep
+ * working: permissions stay flat, and the profile endpoints say so instead of
+ * crashing.
+ */
+describe('A custom adapter without profile support', () => {
+  let app: INestApplication;
+  let base: string;
+  let token: string;
+
+  beforeAll(async () => {
+    @Module({
+      imports: [
+        KcAuthModule.forRoot({
+          adapter: 'custom',
+          adapterProvider: InMemoryAdapter,
+          jwtSecret: 'no-profiles-secret',
+          enableRegistration: true,
+          defaultRole: 'admin', // so the profile endpoints are reachable
+        }),
+      ],
+    })
+    class AppModule {}
+
+    const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    app = moduleRef.createNestApplication({ logger: ['error'] });
+    app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+    await app.listen(0);
+    base = (await app.getUrl()).replace('[::1]', '127.0.0.1');
+
+    await fetch(base + '/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'noprofiles@test.com', password: 'secret1', name: 'No Profiles' }),
+    });
+    const login = await fetch(base + '/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'noprofiles@test.com', password: 'secret1' }),
+    });
+    token = ((await login.json()) as any).accessToken;
+  });
+
+  afterAll(async () => {
+    await app.close();
+  });
+
+  it('answers 501 on the profile endpoints', async () => {
+    const r = await fetch(base + '/profiles', { headers: { Authorization: `Bearer ${token}` } });
+    expect(r.status).toBe(501);
+  });
+
+  it('still resolves permissions, flat, on login', async () => {
+    const r = await fetch(base + '/auth/me', { headers: { Authorization: `Bearer ${token}` } });
+    const body = (await r.json()) as any;
+    expect(r.status).toBe(200);
+    expect(body.permissions).toEqual([]);
+    expect(body.profileId).toBeNull();
+  });
+
+  it('rejects assigning a profile instead of pretending it worked', async () => {
+    const users = (await (await fetch(base + '/users', { headers: { Authorization: `Bearer ${token}` } })).json()) as any[];
+    const r = await fetch(base + `/users/${users[0].id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ profileId: 1 }),
+    });
+    expect(r.status).toBe(400);
+  });
+});

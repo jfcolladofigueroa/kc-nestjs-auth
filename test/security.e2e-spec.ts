@@ -6,11 +6,7 @@ import { DataSource } from 'typeorm';
 
 import { KcAuthModule } from '../src/auth.module';
 import { KcAuthConfig } from '../src/config/auth.config';
-import {
-  KcUserEntity,
-  KcRefreshTokenEntity,
-  KcVerificationCodeEntity,
-} from '../src/adapters/typeorm.entities';
+import { kcAuthEntities } from '../src/adapters/typeorm.entities';
 import { parseDuration } from '../src/utils/duration.util';
 
 interface Res {
@@ -25,7 +21,7 @@ async function bootApp(config: Partial<KcAuthConfig>): Promise<{ app: INestAppli
         type: 'sqljs',
         synchronize: true,
         autoSave: false,
-        entities: [KcUserEntity, KcRefreshTokenEntity, KcVerificationCodeEntity],
+        entities: kcAuthEntities,
       }),
       KcAuthModule.forRoot({
         adapter: 'typeorm',

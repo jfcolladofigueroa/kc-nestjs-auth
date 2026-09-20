@@ -95,6 +95,23 @@ export class KcAuthService {
     return this.hasRole('admin');
   }
 
+  /**
+   * Whether the session holds a permission. 'admin' passes everything, mirroring
+   * KcRolesGuard on the backend. This is for hiding UI, never for authorization:
+   * the guard is the one that decides.
+   */
+  hasPermission(permission: string): boolean {
+    const user = this._user();
+    if (!user) return false;
+    if (user.role === 'admin') return true;
+    return (user.permissions ?? []).includes(permission);
+  }
+
+  /** `hasPermission('material:consultar')` spelled as a resource plus a verb. */
+  can(resource: string, verb: string): boolean {
+    return this.hasPermission(`${resource}:${verb}`);
+  }
+
   private setSession(response: LoginResponse | RefreshResponse) {
     this._accessToken.set(response.accessToken);
     this._user.set(response.user);

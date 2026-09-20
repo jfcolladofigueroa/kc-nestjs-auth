@@ -1,6 +1,6 @@
 {
   "name": "@kc-software/nestjs-auth-angular",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Angular frontend utilities for @kc-software/nestjs-auth",
   "main": "src/index.ts",
   "peerDependencies": {

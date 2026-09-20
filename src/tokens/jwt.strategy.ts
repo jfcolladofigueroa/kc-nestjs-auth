@@ -21,6 +21,7 @@ export class KcJwtStrategy extends PassportStrategy(Strategy) {
       email: payload.email,
       role: payload.role,
       tenantId: payload.tenantId ?? null,
+      profileId: payload.profileId ?? null,
       permissions: payload.permissions || [],
     };
   }

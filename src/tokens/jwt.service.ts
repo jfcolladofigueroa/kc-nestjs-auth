@@ -3,8 +3,8 @@ import { JwtService } from '@nestjs/jwt';
 import { randomBytes } from 'crypto';
 import { KC_AUTH_CONFIG, KC_AUTH_ADAPTER, KcAuthConfig } from '../config/auth.config';
 import { AuthDatabaseAdapter } from '../adapters/adapter.interface';
-import { parsePermissions } from '../utils/permissions.util';
 import { parseDuration } from '../utils/duration.util';
+import { KcPermissionsService } from '../permissions/permissions.service';
 
 export interface JwtPayload {
   sub: number | string;
@@ -12,6 +12,9 @@ export interface JwtPayload {
   role: string;
   /** Optional multi-tenancy: the user's tenant (absent in single-tenant projects). */
   tenantId?: number | null;
+  /** Profile the permissions below were inherited from (null = flat permissions only). */
+  profileId?: number | string | null;
+  /** Effective permissions: profile ∪ own, resolved when the token was issued. */
   permissions: string[];
 }
 
@@ -21,6 +24,7 @@ export class KcTokenService {
     private readonly jwtService: JwtService,
     @Inject(KC_AUTH_CONFIG) private readonly config: KcAuthConfig,
     @Inject(KC_AUTH_ADAPTER) private readonly adapter: AuthDatabaseAdapter,
+    private readonly permissionsService: KcPermissionsService,
   ) {}
 
   generateAccessToken(payload: JwtPayload): string {
@@ -46,14 +50,17 @@ export class KcTokenService {
 
     await this.adapter.revokeRefreshToken(refreshToken);
     const newRefreshToken = await this.generateRefreshToken(user.id);
-    const permissions = parsePermissions(user);
+    // Recomputed on every refresh: this is where a profile change reaches a
+    // live session.
+    const permissions = await this.permissionsService.getEffectivePermissions(user);
+    const profileId = user.profileId ?? null;
     const accessToken = this.generateAccessToken({
-      sub: user.id, email: user.email, role: user.role, tenantId: user.tenantId ?? null, permissions,
+      sub: user.id, email: user.email, role: user.role, tenantId: user.tenantId ?? null, profileId, permissions,
     });
 
     return {
       accessToken, refreshToken: newRefreshToken,
-      user: { id: user.id, email: user.email, name: user.name, role: user.role, tenantId: user.tenantId ?? null, permissions },
+      user: { id: user.id, email: user.email, name: user.name, role: user.role, tenantId: user.tenantId ?? null, profileId, permissions },
     };
   }
 

@@ -3,7 +3,7 @@ import { KC_AUTH_CONFIG, KC_AUTH_ADAPTER, KC_EMAIL_SERVICE, KcAuthConfig, KcEmai
 import { AuthDatabaseAdapter } from './adapters/adapter.interface';
 import { KcTokenService } from './tokens/jwt.service';
 import { KcPasswordService } from './password/password.service';
-import { parsePermissions } from './utils/permissions.util';
+import { KcPermissionsService } from './permissions/permissions.service';
 import { parseDuration } from './utils/duration.util';
 import { safeEqual } from './utils/safe-equal.util';
 
@@ -15,6 +15,7 @@ export class KcAuthService {
     @Inject(KC_EMAIL_SERVICE) private readonly emailService: KcEmailService | null,
     private readonly tokenService: KcTokenService,
     private readonly passwordService: KcPasswordService,
+    private readonly permissionsService: KcPermissionsService,
   ) {}
 
   async login(email: string, password: string) {
@@ -27,15 +28,16 @@ export class KcAuthService {
 
     await this.adapter.updateUser(user.id, { lastLoginAt: new Date() });
 
-    const permissions = parsePermissions(user);
+    const permissions = await this.permissionsService.getEffectivePermissions(user);
+    const profileId = user.profileId ?? null;
     const accessToken = this.tokenService.generateAccessToken({
-      sub: user.id, email: user.email, role: user.role, tenantId: user.tenantId ?? null, permissions,
+      sub: user.id, email: user.email, role: user.role, tenantId: user.tenantId ?? null, profileId, permissions,
     });
     const refreshToken = await this.tokenService.generateRefreshToken(user.id);
 
     return {
       accessToken, refreshToken,
-      user: { id: user.id, email: user.email, name: user.name, role: user.role, tenantId: user.tenantId ?? null, permissions },
+      user: { id: user.id, email: user.email, name: user.name, role: user.role, tenantId: user.tenantId ?? null, profileId, permissions },
     };
   }
 
@@ -66,7 +68,12 @@ export class KcAuthService {
   async getMe(userId: number | string) {
     const user = await this.adapter.findUserById(userId);
     if (!user) throw new UnauthorizedException('User not found');
-    return { id: user.id, email: user.email, name: user.name, role: user.role, tenantId: user.tenantId ?? null, permissions: parsePermissions(user) };
+    return {
+      id: user.id, email: user.email, name: user.name, role: user.role,
+      tenantId: user.tenantId ?? null,
+      profileId: user.profileId ?? null,
+      permissions: await this.permissionsService.getEffectivePermissions(user),
+    };
   }
 
   async changePassword(userId: number | string, currentPassword: string, newPassword: string) {

@@ -1,5 +1,61 @@
 # Changelog
 
+## 0.3.0 - 2026-09-20
+
+Backwards compatible for permissions: a user with `profileId = NULL` and flat
+`permissions` resolves to exactly the same permission list as in 0.2.0, and
+`KcRolesGuard` / `@Permissions()` are untouched. One behavioural change needs a
+decision on upgrade — see *Changed* below.
+
+### Added
+
+- **Profiles and permission matrix.** `KcProfileEntity` (`auth_profiles`) and
+  `KcProfilePermissionEntity` (`auth_profile_permissions`): a profile groups a
+  grid of resources by the four verbs a Brazilian public-sector tender asks for
+  (`incluir`, `alterar`, `consultar`, `excluir`). `KcUserEntity` gains a
+  nullable `profileId`.
+- **Effective permissions** = profile permissions ∪ the user's own. Resolved
+  once, when the access token is issued, and carried inside the JWT — the guard
+  still does no I/O. `resolveEffectivePermissions()` and
+  `permissionsFromMatrix()` are exported.
+- **Profile administration endpoints** under `/profiles`, guarded by
+  `auth.perfil:consultar` / `auth.perfil:alterar` (role `admin` bypasses both):
+  list, read, create, update, logical removal, and read/write of the full
+  matrix.
+- **Migrations shipped by the library** (`kcAuthMigrations`). The baseline one
+  creates `auth_users`, `auth_refresh_tokens` and `auth_verification_codes` and
+  is a no-op where they already exist; the 0.3.0 one is strictly additive.
+  Their timestamps are deliberately low so TypeORM runs them before an
+  application's own migrations.
+- `kcAuthEntities` — every entity the library owns, for the host's `entities`
+  array.
+- `KcPermissionsService` with a per-profile cache (`profileCacheTtl`, default
+  300 s), invalidated on every write through the library's endpoints.
+- `revokeTokensOnProfileChange` (default `false`): revokes the refresh tokens
+  of the affected users when a profile or an assignment changes.
+- `permissionVerbs` to override the four verbs used to flatten a matrix.
+- `KC_USER_DEACTIVATED_EVENT`, and a `deletionMode` field on the payload of
+  `KC_USER_DELETED_EVENT`.
+- `profileId` in the JWT payload, in `req.user`, and in the `/auth/login`,
+  `/auth/refresh` and `/auth/me` responses. `GET /users` and `PUT /users/:id`
+  also return `effectivePermissions`.
+
+### Changed
+
+- **`DELETE /users/:id` now deactivates instead of deleting.** The row stays,
+  `isActive` becomes false and the user's refresh tokens are revoked, which is
+  what makes the documented guarantee true: user ids are stable and never
+  reused, so business ledgers can reference `auth_users.id` for a decade.
+  `KC_USER_DELETED_EVENT` still fires, now carrying
+  `deletionMode: 'deactivate'`. **If a listener in your app deletes rows keyed
+  by that `userId`, review it before upgrading.** Set
+  `userDeletionMode: 'hard'` to restore the previous behaviour.
+- `AuthDatabaseAdapter` gained the profile methods, all **optional**: an
+  adapter written against 0.2.0 keeps compiling. Without them, permissions stay
+  flat and `/profiles` answers 501.
+- Distribution: published on npm as a public package instead of being copied
+  into each project with `file:`.
+
 ## 0.2.0 - 2026-07-13
 
 ### Breaking changes

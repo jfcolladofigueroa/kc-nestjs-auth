@@ -55,7 +55,55 @@ export interface KcAuthConfig {
   defaultRole?: string;            // default 'user'
 
   loginRateLimit?: { ttl: number; limit: number }; // default { ttl: 60, limit: 5 }
+
+  /**
+   * Verbs used when flattening a profile's permission matrix into the
+   * `resource:verb` strings the guard consumes. Defaults to the Portuguese
+   * verbs required by Brazilian public-sector tenders
+   * (`incluir`/`alterar`/`consultar`/`excluir`).
+   */
+  permissionVerbs?: KcPermissionVerbs;
+
+  /**
+   * Seconds a profile's resolved permissions stay cached in memory.
+   * Writes through the library's own profile endpoints invalidate the entry
+   * immediately; the TTL only bounds staleness when the rows are changed from
+   * outside (another instance, a SQL script). Default 300. Use 0 to disable.
+   */
+  profileCacheTtl?: number;
+
+  /**
+   * When true, changing a profile (or a user's profile assignment) revokes the
+   * refresh tokens of every affected user, so the new permissions apply at the
+   * next refresh instead of waiting for the access token to expire.
+   * Default false. See "Profiles and the permission matrix" in the README.
+   */
+  revokeTokensOnProfileChange?: boolean;
+
+  /**
+   * How `DELETE /users/:id` behaves. `'deactivate'` (default) sets
+   * `isActive = false` and keeps the row, which is the guarantee documented in
+   * the README: user ids are stable and never reused, so business tables can
+   * reference `auth_users.id` forever. `'hard'` restores the pre-0.3.0
+   * behaviour of physically deleting the row.
+   */
+  userDeletionMode?: 'deactivate' | 'hard';
 }
+
+export interface KcPermissionVerbs {
+  create: string;
+  update: string;
+  read: string;
+  delete: string;
+}
+
+/** Default verbs: `material:incluir`, `material:alterar`, ... */
+export const KC_DEFAULT_PERMISSION_VERBS: KcPermissionVerbs = {
+  create: 'incluir',
+  update: 'alterar',
+  read: 'consultar',
+  delete: 'excluir',
+};
 
 export interface KcEmailService {
   sendPasswordRecoveryEmail(email: string, code: string, userName?: string): Promise<void>;
@@ -68,6 +116,12 @@ export interface KcAuthUser {
   role: string;
   /** Optional multi-tenancy: id of the tenant the user belongs to (null = single-tenant). */
   tenantId?: number | null;
+  /**
+   * Optional profile the user inherits permissions from. `null` (the default
+   * for every user created before 0.3.0) means the user only has its own
+   * `permissions`.
+   */
+  profileId?: number | string | null;
   /** Stored as a JSON string by the TypeORM adapter; custom adapters may return an array. */
   permissions?: string | string[];
   passwordHash: string;
@@ -96,4 +150,40 @@ export interface KcVerificationCode {
   /** Failed match attempts registered against this code. */
   attempts: number;
   createdAt: Date;
+}
+
+/** A named group of permissions users can be assigned to. */
+export interface KcProfile {
+  id: number | string;
+  /** Optional multi-tenancy, consistent with KcAuthUser. */
+  tenantId?: number | null;
+  /** Unique per tenant. */
+  name: string;
+  description?: string | null;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * One row of a profile's permission matrix: a resource by the four verbs a
+ * public-sector tender asks for (include / change / query / delete).
+ */
+export interface KcProfilePermission {
+  id: number | string;
+  profileId: number | string;
+  resource: string;
+  canCreate: boolean;
+  canUpdate: boolean;
+  canRead: boolean;
+  canDelete: boolean;
+}
+
+/** A matrix row as accepted when writing a profile's permissions. */
+export interface KcProfilePermissionInput {
+  resource: string;
+  canCreate?: boolean;
+  canUpdate?: boolean;
+  canRead?: boolean;
+  canDelete?: boolean;
 }

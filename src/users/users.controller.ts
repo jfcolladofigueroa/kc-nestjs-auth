@@ -18,7 +18,7 @@ export class KcUsersController {
 
   @Post()
   create(@Body() dto: CreateUserDto) {
-    return this.usersService.create(dto.email, dto.password, dto.name, dto.role, dto.permissions, dto.tenantId);
+    return this.usersService.create(dto.email, dto.password, dto.name, dto.role, dto.permissions, dto.tenantId, dto.profileId);
   }
 
   @Put(':id')
@@ -26,6 +26,7 @@ export class KcUsersController {
     return this.usersService.update(id, dto);
   }
 
+  /** Logical removal by default: deactivates the user, never deletes the row. */
   @Delete(':id')
   remove(@Param('id') id: string, @Req() req: any) {
     return this.usersService.remove(id, req.user.id);

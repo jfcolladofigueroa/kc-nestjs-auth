@@ -9,7 +9,19 @@
  *
  * Requires the app to register `EventEmitterModule.forRoot()` in its AppModule.
  */
+
+/**
+ * `DELETE /users/:id` succeeded. Emitted in both deletion modes, so listeners
+ * written against 0.2.0 keep working; read `deletionMode` to tell them apart.
+ *
+ * Since 0.3.0 the default mode is `'deactivate'`: the row is NOT gone, the user
+ * was deactivated. Do not delete data keyed by `userId` on this event unless
+ * you run with `userDeletionMode: 'hard'`.
+ */
 export const KC_USER_DELETED_EVENT = 'kc-auth.user.deleted';
+
+/** A user was deactivated (logical removal). Only in `'deactivate'` mode. */
+export const KC_USER_DEACTIVATED_EVENT = 'kc-auth.user.deactivated';
 
 export interface KcUserDeletedEvent {
   userId: number | string;
@@ -17,4 +29,6 @@ export interface KcUserDeletedEvent {
   name: string;
   role: string;
   tenantId?: number | null;
+  /** 'deactivate' (default since 0.3.0) means the row still exists. */
+  deletionMode?: 'deactivate' | 'hard';
 }

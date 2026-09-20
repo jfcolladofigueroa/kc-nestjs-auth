@@ -18,6 +18,11 @@ export class CreateUserDto {
   @IsInt()
   tenantId?: number;
 
+  /** Profile to inherit permissions from. Omit or null for flat permissions. */
+  @IsOptional()
+  @IsInt()
+  profileId?: number | null;
+
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
@@ -44,6 +49,11 @@ export class UpdateUserDto {
   @IsOptional()
   @MinLength(8)
   password?: string;
+
+  /** Profile to inherit permissions from. Send null to detach. */
+  @IsOptional()
+  @IsInt()
+  profileId?: number | null;
 
   @IsOptional()
   @IsArray()

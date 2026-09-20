@@ -3,7 +3,21 @@ export interface AuthUser {
   email: string;
   name: string;
   role: string;
+  /** Optional multi-tenancy. */
+  tenantId?: number | null;
+  /** Profile the permissions below were inherited from (null = flat permissions). */
+  profileId?: number | string | null;
+  /** Effective permissions: profile ∪ own, as `resource:verb` strings. */
+  permissions?: string[];
 }
+
+/** Verbs of the permission matrix, matching the backend defaults. */
+export const PERMISSION_VERBS = {
+  create: 'incluir',
+  update: 'alterar',
+  read: 'consultar',
+  delete: 'excluir',
+} as const;
 
 export interface LoginResponse {
   accessToken: string;
@@ -24,6 +38,7 @@ export interface KcAuthAngularConfig {
   logoutPath?: string;      // default '/auth/logout'
   mePath?: string;          // default '/auth/me'
   usersPath?: string;       // default '/users'
+  profilesPath?: string;    // default '/profiles'
   loginRoute?: string;      // default '/login'
   dashboardRoute?: string;  // default '/dashboard'
 }
@@ -37,6 +52,7 @@ export const DEFAULT_CONFIG: Required<KcAuthAngularConfig> = {
   logoutPath: '/auth/logout',
   mePath: '/auth/me',
   usersPath: '/users',
+  profilesPath: '/profiles',
   loginRoute: '/login',
   dashboardRoute: '/dashboard',
 };

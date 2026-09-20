@@ -12,13 +12,22 @@ import { KcJwtStrategy } from './tokens/jwt.strategy';
 import { KcPasswordService } from './password/password.service';
 import { KcUsersService } from './users/users.service';
 import { KcUsersController } from './users/users.controller';
+import { KcPermissionsService } from './permissions/permissions.service';
+import { KcProfilesService } from './profiles/profiles.service';
+import { KcProfilesController } from './profiles/profiles.controller';
 import { KcJwtAuthGuard } from './guards/jwt-auth.guard';
 import { KcRolesGuard } from './roles/roles.guard';
 import { KcRateLimitGuard } from './security/rate-limit.guard';
 import { parseDuration } from './utils/duration.util';
 
 import { TypeOrmAuthAdapter } from './adapters/typeorm.adapter';
-import { KcUserEntity, KcRefreshTokenEntity, KcVerificationCodeEntity } from './adapters/typeorm.entities';
+import {
+  KcUserEntity,
+  KcRefreshTokenEntity,
+  KcVerificationCodeEntity,
+  KcProfileEntity,
+  KcProfilePermissionEntity,
+} from './adapters/typeorm.entities';
 
 @Module({})
 export class KcAuthModule {
@@ -44,6 +53,9 @@ export class KcAuthModule {
       verificationCodeMaxAttempts: 5,
       defaultRole: 'user',
       loginRateLimit: { ttl: 60, limit: 5 },
+      profileCacheTtl: 300,
+      revokeTokensOnProfileChange: false,
+      userDeletionMode: 'deactivate',
       ...runtimeConfig,
     };
 
@@ -83,7 +95,13 @@ export class KcAuthModule {
     } else {
       adapterProvider = { provide: KC_AUTH_ADAPTER, useClass: TypeOrmAuthAdapter };
       imports.push(
-        TypeOrmModule.forFeature([KcUserEntity, KcRefreshTokenEntity, KcVerificationCodeEntity]),
+        TypeOrmModule.forFeature([
+          KcUserEntity,
+          KcRefreshTokenEntity,
+          KcVerificationCodeEntity,
+          KcProfileEntity,
+          KcProfilePermissionEntity,
+        ]),
       );
     }
 
@@ -100,16 +118,20 @@ export class KcAuthModule {
         KcJwtStrategy,
         KcPasswordService,
         KcUsersService,
+        KcPermissionsService,
+        KcProfilesService,
         KcJwtAuthGuard,
         KcRolesGuard,
         KcRateLimitGuard,
       ],
-      controllers: [KcAuthController, KcUsersController],
+      controllers: [KcAuthController, KcUsersController, KcProfilesController],
       exports: [
         KcAuthService,
         KcUsersService,
         KcPasswordService,
         KcTokenService,
+        KcPermissionsService,
+        KcProfilesService,
         KcJwtAuthGuard,
         KcRolesGuard,
         KcRateLimitGuard,
