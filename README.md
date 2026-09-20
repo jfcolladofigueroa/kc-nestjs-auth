@@ -222,6 +222,11 @@ Deactivating a profile (`DELETE /profiles/:id`) does not touch its users: an
 inactive profile simply grants nothing, so each user falls back to its own
 permissions.
 
+Profile names are unique per tenant. Under a NULL tenant — the single-tenant
+case — a plain `(tenant_id, name)` index would not enforce that, because NULL
+never equals NULL; the migration adds a partial unique index for it where the
+driver supports one, and `KcProfilesService` checks the name in every case.
+
 ### When a change takes effect
 
 Effective permissions are resolved **once, when the access token is issued**,

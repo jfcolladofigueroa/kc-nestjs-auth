@@ -46,6 +46,10 @@ decision on upgrade — see *Changed* below.
 
 ### Fixed
 
+- Two single-tenant profiles could share a name: the unique index on
+  `(tenant_id, name)` does not constrain rows where `tenant_id` is NULL, since
+  NULL never equals NULL. A partial unique index on `name WHERE tenant_id IS
+  NULL` closes it where the driver supports one.
 - The baseline migration wrote `SERIAL` as a column type, which PostgreSQL
   renders as a column with no type at all (`CREATE TABLE "auth_users" ("id" NOT
   NULL, ...`). Only the SQLite suite ran, so it went unnoticed; the migration

@@ -35,12 +35,27 @@ export class KcAuthProfiles1000000000002 implements MigrationInterface {
         'auth_profiles',
         new TableIndex({ name: 'idx_auth_profiles_tenant', columnNames: ['tenant_id'] }),
       );
-      // Unique per tenant. On Postgres NULL != NULL, so this does not constrain
-      // single-tenant rows; KcProfilesService checks the name before inserting.
+      // Unique per tenant.
       await queryRunner.createIndex(
         'auth_profiles',
         new TableIndex({ name: 'uq_auth_profiles_tenant_name', columnNames: ['tenant_id', 'name'], isUnique: true }),
       );
+      // The index above does not constrain single-tenant rows: NULL != NULL, so
+      // any number of profiles named "Administrador" with tenant_id NULL would
+      // fit. A partial index closes it where the driver supports one; elsewhere
+      // KcProfilesService's name check is the only guard.
+      const driver = queryRunner.connection.options.type;
+      if (driver === 'postgres' || driver === 'sqlite' || driver === 'better-sqlite3' || driver === 'sqljs') {
+        await queryRunner.createIndex(
+          'auth_profiles',
+          new TableIndex({
+            name: 'uq_auth_profiles_global_name',
+            columnNames: ['name'],
+            isUnique: true,
+            where: 'tenant_id IS NULL',
+          }),
+        );
+      }
     }
 
     if (!(await queryRunner.hasTable('auth_profile_permissions'))) {

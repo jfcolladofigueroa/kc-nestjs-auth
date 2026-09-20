@@ -95,6 +95,18 @@ describePg('Library migrations on PostgreSQL', () => {
     expect(user.permissions).toBe('[]');
   });
 
+  it('rejects two single-tenant profiles with the same name', async () => {
+    await ds.query(`INSERT INTO auth_profiles (name) VALUES ('Unico')`);
+    // (tenant_id, name) alone would not catch this: NULL != NULL in SQL.
+    await expect(ds.query(`INSERT INTO auth_profiles (name) VALUES ('Unico')`)).rejects.toThrow();
+    // The same name under a tenant is fine — each tenant has its own profiles.
+    await ds.query(`INSERT INTO auth_profiles (tenant_id, name) VALUES (1, 'Unico')`);
+    await ds.query(`INSERT INTO auth_profiles (tenant_id, name) VALUES (2, 'Unico')`);
+    await expect(
+      ds.query(`INSERT INTO auth_profiles (tenant_id, name) VALUES (2, 'Unico')`),
+    ).rejects.toThrow();
+  });
+
   it('rejects a duplicated resource in a profile matrix', async () => {
     const [profile] = await ds.query(
       `INSERT INTO auth_profiles (name) VALUES ('Dup') RETURNING id`,
