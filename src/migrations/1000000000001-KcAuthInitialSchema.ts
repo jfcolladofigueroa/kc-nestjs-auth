@@ -18,9 +18,11 @@ export class KcAuthInitialSchema1000000000001 implements MigrationInterface {
   name = 'KcAuthInitialSchema1000000000001';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    // Driver-appropriate types; TypeORM's Table API needs explicit ones.
-    const isPg = queryRunner.connection.options.type === 'postgres';
-    const pk = isPg ? 'SERIAL' : 'integer';
+    // An integer type plus isGenerated lets TypeORM emit the driver's own
+    // auto-increment (SERIAL on Postgres, INTEGER ... AUTOINCREMENT on SQLite).
+    // Spelling 'SERIAL' by hand yields a column with no type at all on Postgres,
+    // and SQLite only accepts AUTOINCREMENT on a column spelled INTEGER.
+    const pk = queryRunner.connection.options.type === 'postgres' ? 'int' : 'integer';
     const ts = dateColumnType(queryRunner);
 
     if (!(await queryRunner.hasTable('auth_users'))) {

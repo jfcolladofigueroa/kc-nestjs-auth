@@ -12,8 +12,7 @@ export class KcAuthProfiles1000000000002 implements MigrationInterface {
   name = 'KcAuthProfiles1000000000002';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    const isPg = queryRunner.connection.options.type === 'postgres';
-    const pk = isPg ? 'SERIAL' : 'integer';
+    const pk = queryRunner.connection.options.type === 'postgres' ? 'int' : 'integer';
     const ts = dateColumnType(queryRunner);
 
     if (!(await queryRunner.hasTable('auth_profiles'))) {

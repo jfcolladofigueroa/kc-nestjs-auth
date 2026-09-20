@@ -44,6 +44,13 @@ decision on upgrade — see *Changed* below.
   `/auth/refresh` and `/auth/me` responses. `GET /users` and `PUT /users/:id`
   also return `effectivePermissions`.
 
+### Fixed
+
+- The baseline migration wrote `SERIAL` as a column type, which PostgreSQL
+  renders as a column with no type at all (`CREATE TABLE "auth_users" ("id" NOT
+  NULL, ...`). Only the SQLite suite ran, so it went unnoticed; the migration
+  suite now also runs against a real PostgreSQL when `KC_TEST_PG_URL` is set.
+
 ### Changed
 
 - **`DELETE /users/:id` now deactivates instead of deleting.** The row stays,

@@ -426,6 +426,16 @@ npm test        # e2e suites against an in-memory SQLite database
 npm run build
 ```
 
+The migration suite also runs against a real PostgreSQL when you point it at
+one — it catches driver-specific DDL that SQLite happily accepts:
+
+```bash
+docker run -d --name kc-pg -p 55432:5432 -e POSTGRES_PASSWORD=postgres postgres:16-alpine
+KC_TEST_PG_URL=postgres://postgres:postgres@127.0.0.1:55432/postgres npm test
+```
+
+Without `KC_TEST_PG_URL` that suite is skipped.
+
 ## License
 
 MIT
