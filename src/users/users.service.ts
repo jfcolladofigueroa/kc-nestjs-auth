@@ -1,6 +1,6 @@
-import { Injectable, Inject, Optional, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
+import { Injectable, Inject, Optional, NotFoundException, ConflictException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { KC_AUTH_CONFIG, KC_AUTH_ADAPTER, KcAuthConfig } from '../config/auth.config';
+import { KC_AUTH_CONFIG, KC_AUTH_ADAPTER, KC_TENANT_SCOPE, KcAuthConfig, KcTenantScope } from '../config/auth.config';
 import { AuthDatabaseAdapter } from '../adapters/adapter.interface';
 import { KcPasswordService } from '../password/password.service';
 import { KC_USER_DEACTIVATED_EVENT, KC_USER_DELETED_EVENT, KcUserDeletedEvent } from '../events/auth.events';
@@ -17,7 +17,28 @@ export class KcUsersService {
     private readonly permissionsService: KcPermissionsService,
     private readonly tokenService: KcTokenService,
     @Optional() private readonly eventEmitter?: EventEmitter2,
+    @Optional() @Inject(KC_TENANT_SCOPE) private readonly tenantScope?: KcTenantScope,
   ) {}
+
+  /**
+   * `caller` is the authenticated user behind an HTTP request. When it is
+   * absent the call comes from the host app's own code, which is trusted.
+   */
+  private isPrivilegedCaller(): boolean {
+    return !!this.tenantScope?.isSuperadmin();
+  }
+
+  private isAssignable(role: string): boolean {
+    const allowed = this.config.assignableRoles ?? ['user', 'admin'];
+    return allowed.includes(role);
+  }
+
+  private assertCanAssignRole(role: string, caller?: { id?: number | string }): void {
+    if (!caller || this.isPrivilegedCaller()) return;
+    if (!this.isAssignable(role)) {
+      throw new ForbiddenException(`Role "${role}" cannot be assigned`);
+    }
+  }
 
   async findAll() {
     const users = await this.adapter.findAllUsers();
@@ -36,7 +57,8 @@ export class KcUsersService {
     );
   }
 
-  async create(email: string, password: string, name: string, role?: string, permissions?: string[], tenantId?: number | null, profileId?: number | string | null) {
+  async create(email: string, password: string, name: string, role?: string, permissions?: string[], tenantId?: number | null, profileId?: number | string | null, caller?: { id?: number | string }) {
+    if (role) this.assertCanAssignRole(role, caller);
     const existing = await this.adapter.findUserByEmail(email.toLowerCase().trim());
     if (existing) throw new ConflictException('Email already registered');
 
@@ -63,9 +85,24 @@ export class KcUsersService {
     };
   }
 
-  async update(id: number | string, data: { email?: string; name?: string; role?: string; isActive?: boolean; password?: string; permissions?: string[]; profileId?: number | string | null }) {
+  async update(id: number | string, data: { email?: string; name?: string; role?: string; isActive?: boolean; password?: string; permissions?: string[]; profileId?: number | string | null }, caller?: { id?: number | string }) {
     const user = await this.adapter.findUserById(id);
     if (!user) throw new NotFoundException('User not found');
+
+    if (caller && !this.isPrivilegedCaller()) {
+      // A user holding a role the caller cannot grant (e.g. 'superadmin') is
+      // out of reach: otherwise an admin could take it over by changing its
+      // email or password.
+      if (!this.isAssignable(user.role)) {
+        throw new ForbiddenException('You cannot modify this user');
+      }
+      if (data.role && data.role !== user.role) {
+        if (String(id) === String(caller.id)) {
+          throw new BadRequestException('You cannot change your own role');
+        }
+        this.assertCanAssignRole(data.role, caller);
+      }
+    }
 
     const updateData: any = {};
     if (data.email) {

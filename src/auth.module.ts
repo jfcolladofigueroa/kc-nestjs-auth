@@ -52,6 +52,7 @@ export class KcAuthModule {
       verificationCodeLength: 6,
       verificationCodeMaxAttempts: 5,
       defaultRole: 'user',
+      assignableRoles: ['user', 'admin'],
       loginRateLimit: { ttl: 60, limit: 5 },
       profileCacheTtl: 300,
       revokeTokensOnProfileChange: false,

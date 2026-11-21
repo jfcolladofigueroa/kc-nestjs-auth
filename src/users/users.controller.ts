@@ -17,13 +17,13 @@ export class KcUsersController {
   }
 
   @Post()
-  create(@Body() dto: CreateUserDto) {
-    return this.usersService.create(dto.email, dto.password, dto.name, dto.role, dto.permissions, dto.tenantId, dto.profileId);
+  create(@Body() dto: CreateUserDto, @Req() req: any) {
+    return this.usersService.create(dto.email, dto.password, dto.name, dto.role, dto.permissions, dto.tenantId, dto.profileId, req.user);
   }
 
   @Put(':id')
-  update(@Param('id') id: string, @Body() dto: UpdateUserDto) {
-    return this.usersService.update(id, dto);
+  update(@Param('id') id: string, @Body() dto: UpdateUserDto, @Req() req: any) {
+    return this.usersService.update(id, dto, req.user);
   }
 
   /** Logical removal by default: deactivates the user, never deletes the row. */

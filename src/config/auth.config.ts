@@ -54,6 +54,16 @@ export interface KcAuthConfig {
 
   defaultRole?: string;            // default 'user'
 
+  /**
+   * Roles an `admin` may grant through `POST /users` and `PUT /users/:id`.
+   * Default `['user', 'admin']`. Any other role (e.g. `'superadmin'`) can only
+   * be granted by a caller for whom `KcTenantScope.isSuperadmin()` is true, or
+   * by the host app calling `KcUsersService` directly. An admin can neither
+   * change its own role nor edit a user whose current role is outside this
+   * list. Without it, any admin could promote itself to a platform role.
+   */
+  assignableRoles?: string[];
+
   loginRateLimit?: { ttl: number; limit: number }; // default { ttl: 60, limit: 5 }
 
   /**

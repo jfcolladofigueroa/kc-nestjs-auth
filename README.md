@@ -85,6 +85,7 @@ All durations are strings with an explicit unit: `s`, `m`, `h` or `d` (e.g. `'15
 | `verificationCodeLength` | `6` | Recovery code digits. |
 | `verificationCodeMaxAttempts` | `5` | Failed attempts before a code is invalidated. |
 | `defaultRole` | `'user'` | Role assigned on registration. |
+| `assignableRoles` | `['user', 'admin']` | Roles an `admin` may grant through `/users`. Other roles (e.g. `'superadmin'`) need a caller for whom `KcTenantScope.isSuperadmin()` is true. |
 | `loginRateLimit` | `{ ttl: 60, limit: 5 }` | Sliding window (seconds, attempts) applied to login, forgot-password and reset-password, keyed by IP + route + email. |
 | `permissionVerbs` | `{ create: 'incluir', update: 'alterar', read: 'consultar', delete: 'excluir' }` | Verbs used to flatten a profile matrix into `resource:verb` strings. |
 | `profileCacheTtl` | `300` | Seconds a profile's resolved permissions stay cached in memory. `0` disables the cache. |
@@ -417,6 +418,8 @@ Profiles are opt-in: nothing else is required until you decide to create one.
 6. **Error messages are now in English** (they were Portuguese).
 
 ## Security notes
+
+- **Role escalation.** `POST /users` and `PUT /users/:id` only accept roles listed in `assignableRoles`. An admin cannot change its own role, and cannot edit a user whose role is outside that list. A request where `KcTenantScope.isSuperadmin()` is true skips these checks, and so do direct calls to `KcUsersService` from the host app's code (they pass no caller).
 
 - Refresh tokens (random 40-byte values) and recovery codes are stored in plaintext in the database. If your threat model includes database leaks, hash them at rest.
 - `POST /auth/register` returns 409 for duplicate emails, which reveals account existence when public registration is enabled. Forgot-password does not leak existence.

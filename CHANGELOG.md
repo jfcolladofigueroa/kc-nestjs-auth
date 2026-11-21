@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.3.1 - 2026-11-21
+
+### Security
+
+- **Privilege escalation through `/users` fixed.** Up to 0.3.0, `role` was
+  only validated as a string, so any `admin` could send
+  `PUT /users/<own id> {"role":"superadmin"}` (or create a user with that
+  role) and, in a multi-tenant host, gain platform-wide access on the next
+  login. Now:
+  - `POST /users` / `PUT /users/:id` only grant roles in the new
+    `assignableRoles` option (default `['user', 'admin']`); anything else
+    returns 403.
+  - An admin cannot change its own role (400).
+  - An admin cannot edit a user whose current role is outside
+    `assignableRoles`, so it cannot take over a superadmin by changing its
+    email or password (403).
+  - Callers for whom `KcTenantScope.isSuperadmin()` is true, and direct
+    calls to `KcUsersService` without a caller, are unaffected.
+
+Upgrade: no code changes needed unless your admins legitimately assign roles
+other than `user`/`admin`; in that case list them in `assignableRoles`.
+
 ## 0.3.0 - 2026-09-20
 
 Backwards compatible for permissions: a user with `profileId = NULL` and flat
