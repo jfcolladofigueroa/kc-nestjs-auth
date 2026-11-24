@@ -58,13 +58,13 @@ export class TypeOrmAuthAdapter implements AuthDatabaseAdapter {
     return this.userRepo.find({ where, order: { createdAt: 'DESC' } }) as any;
   }
 
-  async createUser(data: { email: string; passwordHash: string; name: string; role: string; tenantId?: number | null; profileId?: number | string | null }): Promise<KcAuthUser> {
+  async createUser(data: { email: string; passwordHash: string; name: string; role: string; tenantId?: number | null; profileId?: number | string | null; mustChangePassword?: boolean }): Promise<KcAuthUser> {
     const tid = this.scopedTenantId;
     // With an active tenant the target tenant is forced and the one in the body
     // is ignored; only a superadmin (null scope) can choose the target tenant.
     const tenantId = tid != null ? tid : (data.tenantId ?? null);
     const profileId = data.profileId == null ? null : Number(data.profileId);
-    const user = this.userRepo.create({ ...data, tenantId, profileId });
+    const user = this.userRepo.create({ ...data, tenantId, profileId, mustChangePassword: !!data.mustChangePassword });
     return this.userRepo.save(user) as any;
   }
 

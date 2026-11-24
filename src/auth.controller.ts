@@ -3,6 +3,7 @@ import { KcAuthService } from './auth.service';
 import { KcJwtAuthGuard } from './guards/jwt-auth.guard';
 import { KcRateLimitGuard } from './security/rate-limit.guard';
 import { Public } from './guards/public.decorator';
+import { AllowPendingPasswordChange } from './guards/allow-pending-password-change.decorator';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
@@ -37,16 +38,19 @@ export class KcAuthController {
     return this.authService.refresh(body.refreshToken);
   }
 
+  @AllowPendingPasswordChange()
   @Post('logout')
   logout(@Body() body: { refreshToken: string }) {
     return this.authService.logout(body.refreshToken);
   }
 
+  @AllowPendingPasswordChange()
   @Get('me')
   getMe(@Req() req: any) {
     return this.authService.getMe(req.user.id);
   }
 
+  @AllowPendingPasswordChange()
   @Post('change-password')
   changePassword(@Req() req: any, @Body() dto: ChangePasswordDto) {
     return this.authService.changePassword(req.user.id, dto.currentPassword, dto.newPassword);

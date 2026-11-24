@@ -9,6 +9,8 @@ export interface AuthUser {
   profileId?: number | string | null;
   /** Effective permissions: profile ∪ own, as `resource:verb` strings. */
   permissions?: string[];
+  /** A forced password change is pending (backend `forcePasswordChangeOnFirstLogin`). */
+  mustChangePassword?: boolean;
 }
 
 /** Verbs of the permission matrix, matching the backend defaults. */
@@ -41,7 +43,12 @@ export interface KcAuthAngularConfig {
   profilesPath?: string;    // default '/profiles'
   loginRoute?: string;      // default '/login'
   dashboardRoute?: string;  // default '/dashboard'
+  /** Route of the screen where a user with a pending forced change sets its password. */
+  changePasswordRoute?: string; // default '/change-password'
 }
+
+/** `code` of the backend 403 while a forced password change is pending. */
+export const PASSWORD_CHANGE_REQUIRED = 'PASSWORD_CHANGE_REQUIRED';
 
 export const KC_AUTH_ANGULAR_CONFIG = 'KC_AUTH_ANGULAR_CONFIG';
 
@@ -55,4 +62,5 @@ export const DEFAULT_CONFIG: Required<KcAuthAngularConfig> = {
   profilesPath: '/profiles',
   loginRoute: '/login',
   dashboardRoute: '/dashboard',
+  changePasswordRoute: '/change-password',
 };

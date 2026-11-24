@@ -18,7 +18,7 @@ export class KcUsersController {
 
   @Post()
   create(@Body() dto: CreateUserDto, @Req() req: any) {
-    return this.usersService.create(dto.email, dto.password, dto.name, dto.role, dto.permissions, dto.tenantId, dto.profileId, req.user);
+    return this.usersService.create(dto.email, dto.password, dto.name, dto.role, dto.permissions, dto.tenantId, dto.profileId, req.user, { mustChangePassword: dto.mustChangePassword });
   }
 
   @Put(':id')

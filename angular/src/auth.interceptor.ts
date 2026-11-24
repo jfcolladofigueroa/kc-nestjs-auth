@@ -1,5 +1,7 @@
 import { HttpInterceptorFn, HttpErrorResponse } from '@angular/common/http';
 import { inject } from '@angular/core';
+import { Router } from '@angular/router';
+import { PASSWORD_CHANGE_REQUIRED } from './auth.models';
 import { KcAuthService } from './auth.service';
 import { catchError, switchMap, throwError } from 'rxjs';
 import { from } from 'rxjs';
@@ -8,6 +10,7 @@ let isRefreshing = false;
 
 export const kcAuthInterceptor: HttpInterceptorFn = (req, next) => {
   const auth = inject(KcAuthService);
+  const router = inject(Router);
   const token = auth.getAccessToken();
 
   // Don't add token to refresh/login requests
@@ -25,6 +28,10 @@ export const kcAuthInterceptor: HttpInterceptorFn = (req, next) => {
 
   return next(authReq).pipe(
     catchError((error: HttpErrorResponse) => {
+      if (error.status === 403 && error.error?.code === PASSWORD_CHANGE_REQUIRED) {
+        router.navigate([auth.changePasswordRoute]);
+        return throwError(() => error);
+      }
       if (error.status === 401 && !isAuthRequest && !isRefreshing) {
         isRefreshing = true;
         return from(auth.refresh()).pipe(

@@ -57,6 +57,7 @@ export class KcAuthModule {
       profileCacheTtl: 300,
       revokeTokensOnProfileChange: false,
       userDeletionMode: 'deactivate',
+      forcePasswordChangeOnFirstLogin: false,
       ...runtimeConfig,
     };
 

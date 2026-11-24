@@ -21,6 +21,8 @@ export class KcAuthService {
 
   readonly user = this._user.asReadonly();
   readonly isAuthenticated = computed(() => !!this._accessToken());
+  /** True while the backend requires a password change before anything else. */
+  readonly mustChangePassword = computed(() => !!this._user()?.mustChangePassword);
 
   configure(config: KcAuthAngularConfig) {
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -33,7 +35,9 @@ export class KcAuthService {
     );
 
     this.setSession(response);
-    this.router.navigate([this.config.dashboardRoute]);
+    this.router.navigate([
+      response.user.mustChangePassword ? this.config.changePasswordRoute : this.config.dashboardRoute,
+    ]);
     return response.user;
   }
 
@@ -68,9 +72,22 @@ export class KcAuthService {
     }
   }
 
+  /**
+   * Changes the password. The backend revokes every refresh token and answers
+   * with a new session, which replaces the current one (and clears a pending
+   * forced change).
+   */
   async changePassword(currentPassword: string, newPassword: string): Promise<void> {
     const url = `${this.config.apiUrl}${this.config.loginPath.replace('/login', '/change-password')}`;
-    await firstValueFrom(this.http.post(url, { currentPassword, newPassword }));
+    const response = await firstValueFrom(
+      this.http.post<LoginResponse | null>(url, { currentPassword, newPassword })
+    );
+    if (response?.accessToken) this.setSession(response);
+  }
+
+  /** Where a user with a pending forced change must go. */
+  get changePasswordRoute(): string {
+    return this.config.changePasswordRoute;
   }
 
   async forgotPassword(email: string): Promise<void> {

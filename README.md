@@ -90,6 +90,7 @@ All durations are strings with an explicit unit: `s`, `m`, `h` or `d` (e.g. `'15
 | `permissionVerbs` | `{ create: 'incluir', update: 'alterar', read: 'consultar', delete: 'excluir' }` | Verbs used to flatten a profile matrix into `resource:verb` strings. |
 | `profileCacheTtl` | `300` | Seconds a profile's resolved permissions stay cached in memory. `0` disables the cache. |
 | `revokeTokensOnProfileChange` | `false` | Revoke the refresh tokens of the affected users when a profile or an assignment changes. |
+| `forcePasswordChangeOnFirstLogin` | `false` | Users whose password was set by someone else (created through `/users`, or reset there by an admin) must change it before using the API. See [Forced password change](#forced-password-change-on-first-login). |
 | `userDeletionMode` | `'deactivate'` | `'deactivate'` keeps the row and sets `isActive = false`; `'hard'` physically deletes it (pre-0.3.0 behaviour). |
 
 ## Endpoints
@@ -101,12 +102,12 @@ All durations are strings with an explicit unit: `s`, `m`, `h` or `d` (e.g. `'15
 | POST | `/auth/refresh` | public | Rotates the refresh token (the old one is revoked). |
 | POST | `/auth/logout` | bearer | Revokes the given refresh token. |
 | GET | `/auth/me` | bearer | Current user with role, tenant and permissions. |
-| POST | `/auth/change-password` | bearer | Changes password and revokes all refresh tokens. |
+| POST | `/auth/change-password` | bearer | Changes password, revokes all refresh tokens and returns a new session (`accessToken`, `refreshToken`, `user`). |
 | POST | `/auth/forgot-password` | public, rate limited | Issues a recovery code (never reveals whether the email exists). |
 | POST | `/auth/reset-password` | public, rate limited | Resets the password with a valid one-time code. |
 | GET | `/users` | admin | Lists users (tenant-scoped when a tenant scope is provided). |
-| POST | `/users` | admin | Creates a user with role/permissions/tenant. |
-| PUT | `/users/:id` | admin | Updates email, name, role, isActive, password, permissions. |
+| POST | `/users` | admin | Creates a user with role/permissions/tenant (and `mustChangePassword`, see below). |
+| PUT | `/users/:id` | admin | Updates email, name, role, isActive, password, permissions, `mustChangePassword`. |
 | DELETE | `/users/:id` | admin | **Deactivates** a user (never yourself), revokes its tokens and emits `kc-auth.user.deleted`. |
 | GET | `/profiles` | `auth.perfil:consultar` | Lists profiles (`?includeInactive=true` for all). |
 | GET | `/profiles/:id` | `auth.perfil:consultar` | A profile with its full matrix. |
@@ -145,8 +146,54 @@ export class ReportsController {
 }
 ```
 
-`req.user` contains `{ id, email, role, tenantId, profileId, permissions }`, where
+`req.user` contains `{ id, email, role, tenantId, profileId, permissions, mustChangePassword }`, where
 `permissions` is the **effective** list (profile ∪ own).
+
+## Forced password change on first login
+
+With `forcePasswordChangeOnFirstLogin: true`, a password chosen by someone other
+than its owner is temporary:
+
+- `POST /users` creates the user with `mustChangePassword = true` (send
+  `"mustChangePassword": false` to skip it, e.g. for a service account). Direct
+  calls to `KcUsersService.create()` from the host app — a seed admin with a
+  default password, say — are flagged too.
+- `PUT /users/:id` with a `password` flags the user again, unless the admin is
+  resetting its own. `"mustChangePassword": true | false` sets or clears it
+  explicitly.
+- Self-registration and `POST /auth/reset-password` (the user chose the password)
+  never flag; the reset also clears a pending flag.
+
+While the flag is set, login works and returns `user.mustChangePassword: true`,
+but the tokens carry a `mustChangePassword` claim and `KcJwtAuthGuard` answers
+every route with:
+
+```json
+{ "statusCode": 403, "error": "Forbidden", "code": "PASSWORD_CHANGE_REQUIRED", "message": "Password change required" }
+```
+
+except `/auth/me`, `/auth/logout` and `/auth/change-password`. Refreshing does
+not help: the claim is read from the row on every refresh. Once the user calls
+`POST /auth/change-password` (the new password must differ from the temporary
+one), the flag is cleared, every previous refresh token is revoked and the
+response carries a **new session** — the client must replace its tokens with it.
+
+Mark your own routes that must stay reachable (a "change your password" page
+that loads data, for instance) with `@AllowPendingPasswordChange()`:
+
+```ts
+import { AllowPendingPasswordChange } from '@kc-software/nestjs-auth';
+
+@AllowPendingPasswordChange()
+@Get('password-policy')
+policy() {}
+```
+
+The flag lives in `auth_users.must_change_password` (added by
+`KcAuthMustChangePassword1000000000003`). With the option off — the default —
+the flag is neither set nor enforced, even if the column is true. A custom
+adapter must store `mustChangePassword` (accept it in `createUser`/`updateUser`
+and return it) for the option to have any effect.
 
 ## API guarantees
 
@@ -312,7 +359,8 @@ Order is not a matter of taste: your business tables carry foreign keys to
 `auth_users.id`, so the auth tables have to exist first. TypeORM sorts
 migrations globally by the timestamp in the class name, and the library's are
 deliberately stamped in 2001 (`KcAuthInitialSchema1000000000001`,
-`KcAuthProfiles1000000000002`) so they always sort ahead of yours.
+`KcAuthProfiles1000000000002`, `KcAuthMustChangePassword1000000000003`) so they
+always sort ahead of yours.
 
 - On an **empty database**, the two library migrations plus your own produce the
   complete schema.
@@ -321,7 +369,8 @@ deliberately stamped in 2001 (`KcAuthInitialSchema1000000000001`,
   by a `hasTable` / `hasColumn` check) and the 0.3.0 one only adds:
   `auth_profiles`, `auth_profile_permissions`, and a nullable `profile_id` on
   `auth_users`. Nothing is dropped, renamed or rewritten, and every existing
-  user keeps `profile_id = NULL`.
+  user keeps `profile_id = NULL`. The 0.4.0 one adds `must_change_password`
+  (`NOT NULL DEFAULT false`) to `auth_users`.
 
 `KcAuthInitialSchema` has no `down()`: dropping `auth_users` would destroy every
 account and orphan the ledgers that reference it. Restore from a backup instead.
@@ -377,6 +426,17 @@ If your app registers `EventEmitterModule.forRoot()`, `DELETE /users/:id` emits
 Read `deletionMode` before acting: since 0.3.0 it is `'deactivate'` by default,
 which means **the row still exists**. Do not delete data keyed by that `userId`
 unless the mode is `'hard'`.
+
+## Migrating from 0.3.x
+
+0.4.0 is additive. Run the library migrations (one new column,
+`auth_users.must_change_password`, default false) — or let `synchronize` add it —
+and nothing changes until you set `forcePasswordChangeOnFirstLogin: true`.
+
+`POST /auth/change-password` now returns a new session instead of an empty
+body. Clients that ignored the body keep working, but after a forced change
+they must store the returned tokens: the old access token still carries the
+`mustChangePassword` claim until it expires.
 
 ## Migrating from 0.2.0
 

@@ -1,7 +1,8 @@
 import { KcAuthInitialSchema1000000000001 } from './1000000000001-KcAuthInitialSchema';
 import { KcAuthProfiles1000000000002 } from './1000000000002-KcAuthProfiles';
+import { KcAuthMustChangePassword1000000000003 } from './1000000000003-KcAuthMustChangePassword';
 
-export { KcAuthInitialSchema1000000000001, KcAuthProfiles1000000000002 };
+export { KcAuthInitialSchema1000000000001, KcAuthProfiles1000000000002, KcAuthMustChangePassword1000000000003 };
 
 /**
  * Every migration owned by the library, in order. Spread it first in your
@@ -16,4 +17,5 @@ export { KcAuthInitialSchema1000000000001, KcAuthProfiles1000000000002 };
 export const kcAuthMigrations = [
   KcAuthInitialSchema1000000000001,
   KcAuthProfiles1000000000002,
+  KcAuthMustChangePassword1000000000003,
 ];

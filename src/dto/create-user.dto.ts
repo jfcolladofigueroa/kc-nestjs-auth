@@ -27,6 +27,15 @@ export class CreateUserDto {
   @IsArray()
   @IsString({ each: true })
   permissions?: string[];
+
+  /**
+   * Only with `forcePasswordChangeOnFirstLogin`: overrides whether the user
+   * must change its password at the next login. Defaults to true on create
+   * and on a password reset by someone else; ignored when the option is off.
+   */
+  @IsOptional()
+  @IsBoolean()
+  mustChangePassword?: boolean;
 }
 
 export class UpdateUserDto {
@@ -59,4 +68,13 @@ export class UpdateUserDto {
   @IsArray()
   @IsString({ each: true })
   permissions?: string[];
+
+  /**
+   * Only with `forcePasswordChangeOnFirstLogin`: overrides whether the user
+   * must change its password at the next login. Defaults to true on create
+   * and on a password reset by someone else; ignored when the option is off.
+   */
+  @IsOptional()
+  @IsBoolean()
+  mustChangePassword?: boolean;
 }

@@ -12,9 +12,9 @@ export interface AuthDatabaseAdapter {
   findUserByEmail(email: string): Promise<KcAuthUser | null>;
   findUserById(id: number | string): Promise<KcAuthUser | null>;
   findAllUsers(): Promise<KcAuthUser[]>;
-  createUser(data: { email: string; passwordHash: string; name: string; role: string; tenantId?: number | null; profileId?: number | string | null }): Promise<KcAuthUser>;
+  createUser(data: { email: string; passwordHash: string; name: string; role: string; tenantId?: number | null; profileId?: number | string | null; mustChangePassword?: boolean }): Promise<KcAuthUser>;
   /** Returns the updated user, or null when no row matched (e.g. tenant-scoped miss). */
-  updateUser(id: number | string, data: Partial<Pick<KcAuthUser, 'email' | 'name' | 'role' | 'passwordHash' | 'isActive' | 'lastLoginAt' | 'tenantId' | 'profileId'>>): Promise<KcAuthUser | null>;
+  updateUser(id: number | string, data: Partial<Pick<KcAuthUser, 'email' | 'name' | 'role' | 'passwordHash' | 'isActive' | 'lastLoginAt' | 'tenantId' | 'profileId' | 'mustChangePassword'>>): Promise<KcAuthUser | null>;
   deleteUser(id: number | string): Promise<void>;
 
   // Refresh Tokens

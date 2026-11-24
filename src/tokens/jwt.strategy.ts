@@ -23,6 +23,7 @@ export class KcJwtStrategy extends PassportStrategy(Strategy) {
       tenantId: payload.tenantId ?? null,
       profileId: payload.profileId ?? null,
       permissions: payload.permissions || [],
+      mustChangePassword: payload.mustChangePassword === true,
     };
   }
 }

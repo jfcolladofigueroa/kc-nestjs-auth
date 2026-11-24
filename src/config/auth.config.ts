@@ -98,6 +98,20 @@ export interface KcAuthConfig {
    * behaviour of physically deleting the row.
    */
   userDeletionMode?: 'deactivate' | 'hard';
+
+  /**
+   * When true, a user whose password was set by someone else must choose a new
+   * one before using the API. Users created through `POST /users`, and users
+   * whose password an admin resets through `PUT /users/:id`, get
+   * `mustChangePassword = true`; until they call `POST /auth/change-password`
+   * every route behind `KcJwtAuthGuard` answers
+   * `403 { code: 'PASSWORD_CHANGE_REQUIRED' }`, except the ones marked with
+   * `@AllowPendingPasswordChange()` (`/auth/me`, `/auth/logout`,
+   * `/auth/change-password`). Self-registered users and passwords reset with a
+   * recovery code are never flagged. Default false: the flag is neither set
+   * nor enforced.
+   */
+  forcePasswordChangeOnFirstLogin?: boolean;
 }
 
 export interface KcPermissionVerbs {
@@ -136,6 +150,13 @@ export interface KcAuthUser {
   permissions?: string | string[];
   passwordHash: string;
   isActive: boolean;
+  /**
+   * The user must change its password before using the API. Only enforced with
+   * `forcePasswordChangeOnFirstLogin`. Optional so custom adapters written
+   * before 0.4.0 keep compiling; an adapter that does not persist it never
+   * forces a change.
+   */
+  mustChangePassword?: boolean;
   lastLoginAt?: Date;
   createdAt: Date;
   updatedAt: Date;

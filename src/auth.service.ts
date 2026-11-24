@@ -28,17 +28,9 @@ export class KcAuthService {
 
     await this.adapter.updateUser(user.id, { lastLoginAt: new Date() });
 
-    const permissions = await this.permissionsService.getEffectivePermissions(user);
-    const profileId = user.profileId ?? null;
-    const accessToken = this.tokenService.generateAccessToken({
-      sub: user.id, email: user.email, role: user.role, tenantId: user.tenantId ?? null, profileId, permissions,
-    });
-    const refreshToken = await this.tokenService.generateRefreshToken(user.id);
-
-    return {
-      accessToken, refreshToken,
-      user: { id: user.id, email: user.email, name: user.name, role: user.role, tenantId: user.tenantId ?? null, profileId, permissions },
-    };
+    // With a pending forced change the tokens carry `mustChangePassword` and
+    // only reach the routes marked @AllowPendingPasswordChange().
+    return this.tokenService.issueSession(user);
   }
 
   async register(email: string, password: string, name: string) {
@@ -73,19 +65,36 @@ export class KcAuthService {
       tenantId: user.tenantId ?? null,
       profileId: user.profileId ?? null,
       permissions: await this.permissionsService.getEffectivePermissions(user),
+      mustChangePassword: this.tokenService.mustChangePassword(user),
     };
   }
 
+  /**
+   * Changes the password, revokes every refresh token of the user and returns
+   * a new session for the caller. The new tokens matter after a forced change:
+   * the old access token still carries `mustChangePassword` until it expires.
+   */
   async changePassword(userId: number | string, currentPassword: string, newPassword: string) {
     const user = await this.adapter.findUserById(userId);
     if (!user) throw new UnauthorizedException();
+    if (!user.isActive) throw new UnauthorizedException('User is inactive');
     const valid = await this.passwordService.verify(currentPassword, user.passwordHash);
     if (!valid) throw new BadRequestException('Current password is incorrect');
     const validation = this.passwordService.validate(newPassword);
     if (!validation.valid) throw new BadRequestException(validation.message);
+    const forced = this.tokenService.mustChangePassword(user);
+    if (forced && (await this.passwordService.verify(newPassword, user.passwordHash))) {
+      throw new BadRequestException('The new password must be different from the current one');
+    }
     const passwordHash = await this.passwordService.hash(newPassword);
-    await this.adapter.updateUser(userId, { passwordHash });
+    // Only send the flag when it is set, so a custom adapter that never stored
+    // it never receives an unknown field.
+    const updated = await this.adapter.updateUser(userId, {
+      passwordHash,
+      ...(user.mustChangePassword ? { mustChangePassword: false } : {}),
+    });
     await this.tokenService.revokeAllUserTokens(userId);
+    return this.tokenService.issueSession(updated ?? { ...user, passwordHash, mustChangePassword: false });
   }
 
   async forgotPassword(email: string) {
@@ -116,7 +125,11 @@ export class KcAuthService {
     const validation = this.passwordService.validate(newPassword);
     if (!validation.valid) throw new BadRequestException(validation.message);
     const passwordHash = await this.passwordService.hash(newPassword);
-    await this.adapter.updateUser(result.user.id, { passwordHash });
+    // The user chose this password itself, so a pending forced change is done.
+    await this.adapter.updateUser(result.user.id, {
+      passwordHash,
+      ...(result.user.mustChangePassword ? { mustChangePassword: false } : {}),
+    });
     await this.adapter.markCodeUsed(result.code.id);
     await this.tokenService.revokeAllUserTokens(result.user.id);
   }

@@ -1,6 +1,6 @@
 {
   "name": "@kc-software/nestjs-auth",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "description": "Reusable NestJS authentication module: JWT, RBAC with profiles and a permission matrix, password recovery, migrations and multi-DB support",
   "keywords": [
     "nestjs",

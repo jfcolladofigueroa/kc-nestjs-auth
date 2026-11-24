@@ -10,7 +10,7 @@ export { KcPermissionsService } from './permissions/permissions.service';
 export { KcProfilesService } from './profiles/profiles.service';
 
 // Guards
-export { KcJwtAuthGuard } from './guards/jwt-auth.guard';
+export { KcJwtAuthGuard, KC_PASSWORD_CHANGE_REQUIRED } from './guards/jwt-auth.guard';
 export { KcRolesGuard } from './roles/roles.guard';
 export { KcRateLimitGuard } from './security/rate-limit.guard';
 
@@ -18,6 +18,7 @@ export { KcRateLimitGuard } from './security/rate-limit.guard';
 export { Roles } from './roles/roles.decorator';
 export { Permissions } from './roles/permissions.decorator';
 export { Public } from './guards/public.decorator';
+export { AllowPendingPasswordChange } from './guards/allow-pending-password-change.decorator';
 
 // Config & Interfaces
 export {
@@ -57,4 +58,7 @@ export {
 export { kcAuthEntities } from './adapters/typeorm.entities';
 
 // Migrations (run before your application's, see README)
-export { kcAuthMigrations, KcAuthInitialSchema1000000000001, KcAuthProfiles1000000000002 } from './migrations';
+export {
+  kcAuthMigrations, KcAuthInitialSchema1000000000001, KcAuthProfiles1000000000002,
+  KcAuthMustChangePassword1000000000003,
+} from './migrations';

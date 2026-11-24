@@ -63,6 +63,11 @@ export class KcUserEntity {
   @Column({ name: 'is_active', default: true })
   isActive!: boolean;
 
+  // Set when someone other than the user chose its password (admin create or
+  // reset) and `forcePasswordChangeOnFirstLogin` is on. Cleared by a change.
+  @Column({ name: 'must_change_password', default: false })
+  mustChangePassword!: boolean;
+
   @Column({ name: 'last_login_at', type: DATE_TYPE, nullable: true })
   lastLoginAt!: Date;
 

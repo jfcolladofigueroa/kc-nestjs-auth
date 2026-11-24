@@ -52,12 +52,24 @@ export class KcUsersService {
         profileId: u.profileId ?? null,
         permissions: parsePermissions(u),
         effectivePermissions: await this.permissionsService.getEffectivePermissions(u),
-        isActive: u.isActive, lastLoginAt: u.lastLoginAt, createdAt: u.createdAt,
+        isActive: u.isActive, mustChangePassword: this.tokenService.mustChangePassword(u),
+        lastLoginAt: u.lastLoginAt, createdAt: u.createdAt,
       })),
     );
   }
 
-  async create(email: string, password: string, name: string, role?: string, permissions?: string[], tenantId?: number | null, profileId?: number | string | null, caller?: { id?: number | string }) {
+  /** Whether a forced password change applies (the option is on), and the value requested or defaulted. */
+  private forcedChange(requested: boolean | undefined, byDefault: boolean): boolean | undefined {
+    if (!this.config.forcePasswordChangeOnFirstLogin) return undefined;
+    return requested ?? byDefault;
+  }
+
+  /**
+   * With `forcePasswordChangeOnFirstLogin`, the new user must change its
+   * password at the first login (its password was chosen by someone else),
+   * unless `options.mustChangePassword` is false.
+   */
+  async create(email: string, password: string, name: string, role?: string, permissions?: string[], tenantId?: number | null, profileId?: number | string | null, caller?: { id?: number | string }, options?: { mustChangePassword?: boolean }) {
     if (role) this.assertCanAssignRole(role, caller);
     const existing = await this.adapter.findUserByEmail(email.toLowerCase().trim());
     if (existing) throw new ConflictException('Email already registered');
@@ -73,6 +85,7 @@ export class KcUsersService {
       role: role || this.config.defaultRole || 'user',
       tenantId: tenantId ?? null,
       profileId: await this.validateProfile(profileId),
+      ...(this.forcedChange(options?.mustChangePassword, true) ? { mustChangePassword: true } : {}),
     });
 
     if (permissions?.length) {
@@ -82,10 +95,11 @@ export class KcUsersService {
       id: user.id, email: user.email, name: user.name, role: user.role,
       profileId: user.profileId ?? null,
       permissions: permissions || [],
+      mustChangePassword: this.tokenService.mustChangePassword(user),
     };
   }
 
-  async update(id: number | string, data: { email?: string; name?: string; role?: string; isActive?: boolean; password?: string; permissions?: string[]; profileId?: number | string | null }, caller?: { id?: number | string }) {
+  async update(id: number | string, data: { email?: string; name?: string; role?: string; isActive?: boolean; password?: string; permissions?: string[]; profileId?: number | string | null; mustChangePassword?: boolean }, caller?: { id?: number | string }) {
     const user = await this.adapter.findUserById(id);
     if (!user) throw new NotFoundException('User not found');
 
@@ -125,6 +139,13 @@ export class KcUsersService {
     if (data.password) {
       updateData.passwordHash = await this.passwordService.hash(data.password);
     }
+    // A password set by someone else must be changed at the next login; an
+    // admin resetting its own password through this endpoint chose it itself.
+    const isSelf = caller !== undefined && String(id) === String(caller.id);
+    const forced = this.forcedChange(data.mustChangePassword, !!data.password && !isSelf);
+    if (forced !== undefined && (data.password || data.mustChangePassword !== undefined)) {
+      if (forced || user.mustChangePassword) updateData.mustChangePassword = forced;
+    }
 
     const updated = await this.adapter.updateUser(id, updateData);
     if (!updated) throw new NotFoundException('User not found');
@@ -141,6 +162,7 @@ export class KcUsersService {
       permissions: parsePermissions(updated),
       effectivePermissions: await this.permissionsService.getEffectivePermissions(updated),
       isActive: updated.isActive,
+      mustChangePassword: this.tokenService.mustChangePassword(updated),
     };
   }
 

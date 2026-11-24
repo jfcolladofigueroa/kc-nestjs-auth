@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.4.0 - 2026-11-24
+
+### Added
+
+- **Forced password change on first login** (`forcePasswordChangeOnFirstLogin`,
+  default `false`). Users created through `POST /users` — or whose password an
+  admin resets through `PUT /users/:id` — get `mustChangePassword = true`.
+  Their tokens carry a `mustChangePassword` claim and `KcJwtAuthGuard` answers
+  `403 { code: 'PASSWORD_CHANGE_REQUIRED' }` on every route except `/auth/me`,
+  `/auth/logout` and `/auth/change-password` until they change it. Admins can
+  override it per user with `mustChangePassword` in the `/users` bodies.
+- `@AllowPendingPasswordChange()` decorator and the `KC_PASSWORD_CHANGE_REQUIRED`
+  constant.
+- `mustChangePassword` in `req.user`, in the `/auth/login`, `/auth/refresh` and
+  `/auth/me` responses, and in the `/users` responses.
+- Migration `KcAuthMustChangePassword1000000000003`: adds
+  `auth_users.must_change_password` (`NOT NULL DEFAULT false`). Additive.
+- `KcTokenService.issueSession(user)`.
+- Angular client (0.3.0): `mustChangePassword` signal, `changePasswordRoute`
+  config, `kcAuthGuard` and the interceptor redirect to it, and
+  `changePassword()` stores the session the backend returns.
+
+### Changed
+
+- `POST /auth/change-password` returns a new session (`accessToken`,
+  `refreshToken`, `user`) instead of an empty body. Previous refresh tokens are
+  still revoked. It now also rejects an inactive user (401).
+
 ## 0.3.1 - 2026-11-21
 
 ### Security

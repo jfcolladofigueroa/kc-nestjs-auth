@@ -58,11 +58,12 @@ describe('Library migrations', () => {
       expect(info.notnull).toBe(0);
     });
 
-    it('records both migrations, library ones first', async () => {
+    it('records every library migration, in order', async () => {
       const rows = await ds.query(`SELECT name FROM migrations ORDER BY timestamp ASC`);
       expect(rows.map((r: any) => r.name)).toEqual([
         'KcAuthInitialSchema1000000000001',
         'KcAuthProfiles1000000000002',
+        'KcAuthMustChangePassword1000000000003',
       ]);
     });
 
@@ -130,6 +131,11 @@ describe('Library migrations', () => {
       expect(user.id).toBe(1);
       expect(user.permissions).toBe('["material:consultar"]');
       expect(JSON.parse(user.permissions)).toEqual(['material:consultar']);
+    });
+
+    it('adds must_change_password as false for every existing user', async () => {
+      const [user] = await ds.query(`SELECT must_change_password FROM auth_users WHERE email = 'prod@test.com'`);
+      expect(Number(user.must_change_password)).toBe(0);
     });
 
     it('leaves every existing user without a profile', async () => {
